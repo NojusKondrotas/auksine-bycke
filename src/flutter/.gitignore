@@ -18,6 +18,9 @@ migrate_working_dir/
 *.iws
 .idea/
 
+# IDE related
+.metadata
+
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
@@ -25,6 +28,11 @@ migrate_working_dir/
 
 # Flutter/Dart/Pub related
 **/doc/api/
+**/generated_plugin_registrant.dart
+**/GeneratedPluginRegistrant.swift
+**/generated_plugin_registrant.cc
+**/generated_plugin_registrant.h
+**/generated_plugins.cmake
 **/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins-dependencies
