@@ -1,6 +1,8 @@
 import 'package:auksine_bycke/pages/profile_page.dart';
 import 'package:auksine_bycke/pages/progress_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
+import 'package:auksine_bycke/utils/exercise_data.dart';
+import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
@@ -83,27 +85,31 @@ class HomeContentPage extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
-          Card(
-            elevation: 4,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: const [
-                  Text(
-                    "Today's Workout",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                    
-                  ),
-                  SizedBox(height: 10),
-                  Text("Push Day"),
-                  Text("Bench Press, Shoulder Press, Triceps"),
-                ],
+          SizedBox(
+            height: 200,
+            width: 500,
+            child: Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: const [
+                    Expanded(
+                        child: Workout(
+                          name: "Today's Workout",
+                          exercises: [
+                            ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
+                            ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
+                            ExerciseData(name: 'Triceps', sets: 4, reps: 10)
+                          ],
+                        ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          
         ],
       ),
     );
