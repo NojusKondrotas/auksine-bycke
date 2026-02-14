@@ -1,15 +1,12 @@
+import 'package:auksine_bycke/utils/exercise_data.dart';
 import 'package:flutter/material.dart';
 
 class Exercise extends StatefulWidget {
-  final String name;
-  final int sets;
-  final int reps;
+  final ExerciseData exerciseData;
 
   const Exercise({
     super.key,
-    required this.name,
-    required this.sets,
-    required this.reps,
+    required this.exerciseData,
   });
 
   @override
@@ -23,7 +20,7 @@ class _ExerciseState extends State<Exercise> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          widget.name,
+          widget.exerciseData.name,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold
@@ -38,7 +35,7 @@ class _ExerciseState extends State<Exercise> {
               color: Color.fromARGB(255, 31, 31, 31),
             ),
             Text(
-              "${widget.sets} x ${widget.reps}",
+              "${widget.exerciseData.sets} x ${widget.exerciseData.reps}",
               style: TextStyle(fontSize: 16),
             ),
           ],
