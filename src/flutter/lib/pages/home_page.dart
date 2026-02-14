@@ -78,13 +78,13 @@ class HomeContentPage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
+        spacing: 20,
         children: [
           const Text(
             "Welcome back",
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
           SizedBox(
             height: 200,
             width: 500,
