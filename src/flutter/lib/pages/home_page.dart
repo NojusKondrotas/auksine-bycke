@@ -1,5 +1,6 @@
 import 'package:auksine_bycke/pages/profile_page.dart';
 import 'package:auksine_bycke/pages/progress_page.dart';
+import 'package:auksine_bycke/pages/settings_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
 import 'package:auksine_bycke/utils/exercise_data.dart';
 import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
@@ -21,7 +22,7 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  final List<Widget> pages = [HomeContentPage(), WorkoutPage(), ProgressPage(), ProfilePage()];
+  final List<Widget> pages = [HomeContentPage(), WorkoutPage(), ProgressPage(), ProfilePage(), SettingsPage()];
 
   @override
 Widget build(BuildContext context) {
@@ -35,6 +36,7 @@ Widget build(BuildContext context) {
         Expanded(
           child: pages[selectedIndex], // tavo puslapio turinys
         ),
+        if (selectedIndex < 3) // shows only if user is in home, workouts or progress pages
         Padding(
           padding: const EdgeInsets.all(16),
           child: ElevatedButton(
@@ -62,6 +64,7 @@ Widget build(BuildContext context) {
         BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
         BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
       ],
     ),
   );
