@@ -60,6 +60,7 @@ class _WorkoutState extends State<Workout> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Center(
           child: Padding(
@@ -73,18 +74,27 @@ class _WorkoutState extends State<Workout> {
             ),
           ),
         ),
-        Expanded(
-          child: _exercises.isEmpty
-            ? const Center(
-              child: Text('No exercises yet. Add some!'),
-            )
-            : ListView.separated(
-              itemCount: _exercises.length,
-              separatorBuilder: (context, index) => SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                return Exercise(exerciseData: _exercises[index]);
-              }
+        if(_tags.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.start,
+              children: _tags.map((tag) => Chip(
+                label: Text(tag.name),
+                labelStyle: const TextStyle(fontSize: 11),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              )).toList(),
             ),
+          ),
+        Column(
+          children: _exercises.asMap().entries.map((entry) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: entry.key < _exercises.length - 1 ? 10 : 0),
+              child: Exercise(exerciseData: entry.value),
+            );
+          }).toList(),
         ),
       ],
     );

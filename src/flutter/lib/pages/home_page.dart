@@ -3,6 +3,7 @@ import 'package:auksine_bycke/pages/progress_page.dart';
 import 'package:auksine_bycke/pages/settings_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
 import 'package:auksine_bycke/utils/exercise_data.dart';
+import 'package:auksine_bycke/utils/workout_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
 import 'package:flutter/material.dart';
 
@@ -89,25 +90,22 @@ class HomeContentPage extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           SizedBox(
-            height: 200,
             width: 500,
             child: Card(
               elevation: 4,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: const [
-                    Expanded(
-                        child: Workout(
-                          name: "Today's Workout",
-                          exercises: [
-                            ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
-                            ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
-                            ExerciseData(name: 'Triceps', sets: 4, reps: 10)
-                          ],
-                        ),
-                    ),
+                child: Workout(
+                  name: "Today's Workout",
+                  exercises: [
+                    ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
+                    ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
+                    ExerciseData(name: 'Triceps', sets: 4, reps: 10)
+                  ],
+                  tags: [
+                    WorkoutTag(name: 'chest'),
+                    WorkoutTag(name: 'triceps'),
+                    WorkoutTag(name: 'strength')
                   ],
                 ),
               ),
