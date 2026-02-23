@@ -5,33 +5,25 @@ import 'package:flutter/material.dart';
 
 class Workout extends StatefulWidget {
   final String name;
-  final List<ExerciseData>? exercises;
-  final List<WorkoutTag>? tags;
+  final List<ExerciseData> exercises;
+  final List<WorkoutTag> tags;
 
-  const Workout({
+  Workout({
     super.key,
     required this.name,
-    this.exercises,
-    this.tags
-  });
+    List<ExerciseData>? exercises,
+    List<WorkoutTag>? tags,
+  }) : exercises = exercises ?? [],
+    tags = tags ?? [];
 
   @override
   State<StatefulWidget> createState() => _WorkoutState();
 }
 
 class _WorkoutState extends State<Workout> {
-  late String _name;
-  late List<ExerciseData> _exercises;
-  late List<WorkoutTag> _tags;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _name = widget.name;
-    _exercises = widget.exercises?.toList() ?? [];
-    _tags = widget.tags?.toList() ?? [];
-  }
+  late final String _name = widget.name;
+  late final List<ExerciseData> _exercises = widget.exercises;
+  late final List<WorkoutTag> _tags = widget.tags;
 
   void addExercise(String name, int sets, int reps) {
     setState(() {
