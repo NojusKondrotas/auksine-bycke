@@ -1,15 +1,18 @@
 import 'package:auksine_bycke/utils/exercise_data.dart';
+import 'package:auksine_bycke/utils/workout_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/exercise.dart';
 import 'package:flutter/material.dart';
 
 class Workout extends StatefulWidget {
   final String name;
   final List<ExerciseData>? exercises;
+  final List<WorkoutTag>? tags;
 
   const Workout({
     super.key,
     required this.name,
-    this.exercises
+    this.exercises,
+    this.tags
   });
 
   @override
@@ -19,6 +22,7 @@ class Workout extends StatefulWidget {
 class _WorkoutState extends State<Workout> {
   late String _name;
   late List<ExerciseData> _exercises;
+  late List<WorkoutTag> _tags;
 
   @override
   void initState() {
@@ -26,6 +30,7 @@ class _WorkoutState extends State<Workout> {
 
     _name = widget.name;
     _exercises = widget.exercises?.toList() ?? [];
+    _tags = widget.tags?.toList() ?? [];
   }
 
   void addExercise(String name, int sets, int reps) {
@@ -37,6 +42,18 @@ class _WorkoutState extends State<Workout> {
   void popExercise(ExerciseData exercise) {
     setState(() {
       _exercises.remove(exercise);
+    });
+  }
+
+  void addTag(WorkoutTag tag) {
+    setState(() {
+      _tags.add(tag);
+    });
+  }
+
+  void removeTag(WorkoutTag tag) {
+    setState(() {
+      _tags.remove(tag);
     });
   }
 
