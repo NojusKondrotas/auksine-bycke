@@ -3,7 +3,8 @@ import 'package:auksine_bycke/pages/progress_page.dart';
 import 'package:auksine_bycke/pages/settings_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
 import 'package:auksine_bycke/utils/exercise_data.dart';
-import 'package:auksine_bycke/utils/workout_tag.dart';
+import 'package:auksine_bycke/utils/workout_tags/strength_tag.dart';
+import 'package:auksine_bycke/utils/workout_tags/upper_body_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
 import 'package:flutter/material.dart';
 
@@ -103,9 +104,8 @@ class HomeContentPage extends StatelessWidget {
                     ExerciseData(name: 'Triceps', sets: 4, reps: 10)
                   ],
                   tags: [
-                    WorkoutTag(name: 'chest'),
-                    WorkoutTag(name: 'triceps'),
-                    WorkoutTag(name: 'strength')
+                    UpperBodyTag(),
+                    StrengthTag()
                   ],
                 ),
               ),
