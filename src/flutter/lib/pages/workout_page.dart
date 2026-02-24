@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:auksine_bycke/database/database_helper.dart';
+import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'dart:async';
 
 class WorkoutPage extends StatefulWidget {
@@ -32,10 +34,54 @@ class _WorkoutPageState extends State<WorkoutPage> {
     });
   }
 
-  void saveWorkout() {
-    // TODO: insert into SQLite transactionally
-    print('Workout saved: $workoutName, duration: $seconds s');
+   void saveWorkout() async {
+  print('1. Save paspaustas');
+  print('workoutName: $workoutName');
+
+  if (workoutName.isEmpty) {
+    print('2. Vardas tuscias - rodomas snackbar');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Įvesk workout pavadinimą!')),
+    );
+    return;
   }
+
+  print('3. Bandoma issaugoti i DB');
+
+  try {
+    stopTimer();
+    final workout = WorkoutModel(
+      name: workoutName,
+      duration: seconds,
+      date: DateTime.now(),
+      exercises: exercises
+          .map((e) => ExerciseModel(
+                name: e.name,
+                sets: e.sets
+                    .map((s) => SetModel(reps: s.reps, weight: s.weight))
+                    .toList(),
+              ))
+          .toList(),
+    );
+
+    await DatabaseHelper.instance.saveWorkout(workout);
+    print('4. Issaugota sekmingai');
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Workout išsaugotas!')),
+      );
+      setState(() {
+        workoutStarted = false;
+        exercises = [];
+        seconds = 0;
+        workoutName = '';
+      });
+    }
+  } catch (e) {
+    print('KLAIDA: $e');
+  }
+}
 
   String get formattedTime {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
