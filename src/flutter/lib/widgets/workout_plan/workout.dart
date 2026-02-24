@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:auksine_bycke/utils/exercise_data.dart';
 import 'package:auksine_bycke/utils/workout_tags/workout_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/exercise.dart';
@@ -21,9 +23,17 @@ class Workout extends StatefulWidget {
 }
 
 class _WorkoutState extends State<Workout> {
-  late final String _name = widget.name;
-  late final List<ExerciseData> _exercises = widget.exercises;
-  late final List<WorkoutTag> _tags = widget.tags;
+  late final String _name;
+  late final List<ExerciseData> _exercises;
+  late final LinkedHashSet<WorkoutTag> _tags;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = widget.name;
+    _exercises = List.of(widget.exercises);
+    _tags = LinkedHashSet.of(widget.tags);
+  }
 
   void addExercise(String name, int sets, int reps) {
     setState(() {
@@ -31,7 +41,7 @@ class _WorkoutState extends State<Workout> {
     });
   }
 
-  void popExercise(ExerciseData exercise) {
+  void removeExercise(ExerciseData exercise) {
     setState(() {
       _exercises.remove(exercise);
     });
