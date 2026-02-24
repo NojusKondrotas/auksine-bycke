@@ -35,9 +35,9 @@ class _WorkoutState extends State<Workout> {
     _tags = LinkedHashSet.of(widget.tags);
   }
 
-  void addExercise(String name, int sets, int reps) {
+  void addExercise(ExerciseData exercise) {
     setState(() {
-      _exercises.add(ExerciseData(name: name, sets: sets, reps: reps));
+      _exercises.add(exercise);
     });
   }
 
