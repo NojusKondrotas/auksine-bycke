@@ -82,37 +82,80 @@ class HomeContentPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        spacing: 20,
-        children: [
-          const Text(
-            "Welcome back",
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(
-            width: 500,
-            child: Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Workout(
-                  name: "Today's Workout",
-                  exercises: [
-                    ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
-                    ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
-                    ExerciseData(name: 'Triceps', sets: 4, reps: 10)
-                  ],
-                  tags: [
-                    UpperBodyTag(),
-                    StrengthTag()
-                  ],
+      child: SingleChildScrollView(
+        child: Column(
+          spacing: 20,
+          children: [
+            const Text(
+              "Welcome back",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(
+              width: 500,
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Workout(
+                    name: "Today's Workout",
+                    exercises: [
+                      ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
+                      ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
+                      ExerciseData(name: 'Triceps', sets: 4, reps: 10)
+                    ],
+                    tags: [
+                      UpperBodyTag(),
+                      StrengthTag()
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+            SizedBox(
+              width: 500,
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Workout(
+                    name: "Tomorrow's Workout",
+                    exercises: [
+                      ExerciseData(name: 'Biceps', sets: 4, reps: 10),
+                      ExerciseData(name: 'Triceps', sets: 4, reps: 10)
+                    ],
+                    tags: [
+                      UpperBodyTag(),
+                      StrengthTag()
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 500,
+              child: Card(
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Workout(
+                    name: "Marta's Workout",
+                    exercises: [
+                      ExerciseData(name: 'Biceps', sets: 4, reps: 12),
+                      ExerciseData(name: 'Press', sets: 3, reps: 20),
+                      ExerciseData(name: 'Dumbbells', sets: 4, reps: 10)
+                    ],
+                    tags: [
+                      UpperBodyTag(),
+                      StrengthTag()
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      )
     );
   }
 }
