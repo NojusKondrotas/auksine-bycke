@@ -38,7 +38,7 @@ Widget build(BuildContext context) {
         Expanded(
           child: pages[selectedIndex], // tavo puslapio turinys
         ),
-        if (selectedIndex < 3) // shows only if user is in home, workouts or progress pages
+        if (selectedIndex < 1) // shows only if user is in home page
         Padding(
           padding: const EdgeInsets.all(16),
           child: ElevatedButton(
