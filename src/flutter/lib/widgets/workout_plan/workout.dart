@@ -1,5 +1,5 @@
 import 'package:auksine_bycke/utils/exercise_data.dart';
-import 'package:auksine_bycke/utils/workout_tag.dart';
+import 'package:auksine_bycke/utils/workout_tags/workout_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/exercise.dart';
 import 'package:flutter/material.dart';
 
@@ -74,7 +74,7 @@ class _WorkoutState extends State<Workout> {
               runSpacing: 4,
               alignment: WrapAlignment.start,
               children: _tags.map((tag) => Chip(
-                label: Text(tag.name),
+                label: Text(tag.getTag()),
                 labelStyle: const TextStyle(fontSize: 11),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               )).toList(),
