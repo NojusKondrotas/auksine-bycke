@@ -7,7 +7,14 @@ import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final Function(bool) onThemeChanged;
+  final bool isDarkMode;
+
+  const HomePage({
+    super.key,
+    required this.onThemeChanged,
+    required this.isDarkMode,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -22,57 +29,62 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  final List<Widget> pages = [HomeContentPage(), WorkoutPage(), ProgressPage(), ProfilePage(), SettingsPage()];
-
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text("Auksinė byckė"),
-      centerTitle: true,
-    ),
-    body: Column(
-      children: [
-        Expanded(
-          child: pages[selectedIndex], // tavo puslapio turinys
-        ),
-        if (selectedIndex < 3) // shows only if user is in home, workouts or progress pages
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: ElevatedButton(
-            onPressed: () {
-              navigateBottomBar(1); //goes to WorkoutPage()
-            },
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 50),
-            ),
-            child: const Text("Start Workout"),
+  Widget build(BuildContext context) {
+
+    final List<Widget> pages = [
+      const HomeContentPage(),
+      WorkoutPage(),
+      ProgressPage(),
+      ProfilePage(),
+      SettingsPage(
+        onThemeChanged: widget.onThemeChanged,
+        isDarkMode: widget.isDarkMode,
+      ),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Auksinė byckė"),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: pages[selectedIndex],
           ),
-        ),
-      ],
-    ),
-    bottomNavigationBar: BottomNavigationBar(
-      showUnselectedLabels: true,
-      currentIndex: selectedIndex,
-      onTap: navigateBottomBar,
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: Colors.blueAccent,
-      unselectedItemColor: Colors.grey,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
-        BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-      ],
-    ),
-  );
+          if (selectedIndex < 3)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: () {
+                  navigateBottomBar(1);
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text("Start Workout"),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        showUnselectedLabels: true,
+        currentIndex: selectedIndex,
+        onTap: navigateBottomBar,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+        ],
+      ),
+    );
+  }
 }
 
-}
-
-// Stateless widget only for home's content
 class HomeContentPage extends StatelessWidget {
   const HomeContentPage({super.key});
 
@@ -99,14 +111,14 @@ class HomeContentPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: const [
                     Expanded(
-                        child: Workout(
-                          name: "Today's Workout",
-                          exercises: [
-                            ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
-                            ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
-                            ExerciseData(name: 'Triceps', sets: 4, reps: 10)
-                          ],
-                        ),
+                      child: Workout(
+                        name: "Today's Workout",
+                        exercises: [
+                          ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
+                          ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
+                          ExerciseData(name: 'Triceps', sets: 4, reps: 10),
+                        ],
+                      ),
                     ),
                   ],
                 ),
