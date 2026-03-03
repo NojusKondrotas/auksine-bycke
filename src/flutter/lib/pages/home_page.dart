@@ -59,7 +59,7 @@ Widget build(BuildContext context) {
             padding: const EdgeInsets.all(16),
             child: ElevatedButton(
               onPressed: () {
-                navigateBottomBar(1);
+                navigateBottomBar(3);
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50),
