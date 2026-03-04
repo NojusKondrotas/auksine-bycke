@@ -1,48 +1,68 @@
+import 'dart:collection';
+
 import 'package:auksine_bycke/utils/exercise_data.dart';
+import 'package:auksine_bycke/utils/workout_tags/workout_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/exercise.dart';
 import 'package:flutter/material.dart';
 
 class Workout extends StatefulWidget {
   final String name;
-  final List<ExerciseData>? exercises;
+  final List<ExerciseData> exercises;
+  final List<WorkoutTag> tags;
 
-  const Workout({
+  Workout({
     super.key,
     required this.name,
-    this.exercises
-  });
+    List<ExerciseData>? exercises,
+    List<WorkoutTag>? tags,
+  }) : exercises = exercises ?? [],
+    tags = tags ?? [];
 
   @override
   State<StatefulWidget> createState() => _WorkoutState();
 }
 
 class _WorkoutState extends State<Workout> {
-  late String _name;
-  late List<ExerciseData> _exercises;
+  late final String _name;
+  late final List<ExerciseData> _exercises;
+  late final LinkedHashSet<WorkoutTag> _tags;
 
   @override
   void initState() {
     super.initState();
-
     _name = widget.name;
-    _exercises = widget.exercises?.toList() ?? [];
+    _exercises = List.of(widget.exercises);
+    _tags = LinkedHashSet.of(widget.tags);
   }
 
-  void addExercise(String name, int sets, int reps) {
+  void addExercise(ExerciseData exercise) {
     setState(() {
-      _exercises.add(ExerciseData(name: name, sets: sets, reps: reps));
+      _exercises.add(exercise);
     });
   }
 
-  void popExercise(ExerciseData exercise) {
+  void removeExercise(ExerciseData exercise) {
     setState(() {
       _exercises.remove(exercise);
+    });
+  }
+
+  void addTag(WorkoutTag tag) {
+    setState(() {
+      _tags.add(tag);
+    });
+  }
+
+  void removeTag(WorkoutTag tag) {
+    setState(() {
+      _tags.remove(tag);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Center(
           child: Padding(
@@ -56,18 +76,49 @@ class _WorkoutState extends State<Workout> {
             ),
           ),
         ),
-        Expanded(
-          child: _exercises.isEmpty
-            ? const Center(
-              child: Text('No exercises yet. Add some!'),
-            )
-            : ListView.separated(
-              itemCount: _exercises.length,
-              separatorBuilder: (context, index) => SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                return Exercise(exerciseData: _exercises[index]);
-              }
+        if(_tags.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Center(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: _tags.map((tag) => Chip(
+                  label: Text(tag.getTag()),
+                  labelStyle: TextStyle(
+                      fontSize: 11,
+                      color: tag.getColor(),
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                )).toList(),
+              ),
             ),
+          ),
+        SizedBox(height: 6,),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FractionallySizedBox(
+              widthFactor: 0.9,
+              child: Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(51),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 6,),
+        Column(
+          children: _exercises.asMap().entries.map((entry) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: entry.key < _exercises.length - 1 ? 10 : 0),
+              child: Exercise(exerciseData: entry.value),
+            );
+          }).toList(),
         ),
       ],
     );
