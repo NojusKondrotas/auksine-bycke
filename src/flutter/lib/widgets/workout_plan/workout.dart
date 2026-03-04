@@ -79,20 +79,39 @@ class _WorkoutState extends State<Workout> {
         if(_tags.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              alignment: WrapAlignment.start,
-              children: _tags.map((tag) => Chip(
-                label: Text(tag.getTag()),
-                labelStyle: TextStyle(
-                    fontSize: 11,
-                    color: tag.getColor(),
-                ),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              )).toList(),
+            child: Center(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: _tags.map((tag) => Chip(
+                  label: Text(tag.getTag()),
+                  labelStyle: TextStyle(
+                      fontSize: 11,
+                      color: tag.getColor(),
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                )).toList(),
+              ),
             ),
           ),
+        SizedBox(height: 6,),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FractionallySizedBox(
+              widthFactor: 0.9,
+              child: Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurface.withAlpha(51),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 6,),
         Column(
           children: _exercises.asMap().entries.map((entry) {
             return Padding(
