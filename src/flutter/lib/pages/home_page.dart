@@ -3,6 +3,11 @@ import 'package:auksine_bycke/pages/progress_page.dart';
 import 'package:auksine_bycke/pages/settings_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
 import 'package:auksine_bycke/utils/exercise_data.dart';
+import 'package:auksine_bycke/utils/workout_tags/endurance_tag.dart';
+import 'package:auksine_bycke/utils/workout_tags/fat_loss_tag.dart';
+import 'package:auksine_bycke/utils/workout_tags/full_body_tag.dart';
+import 'package:auksine_bycke/utils/workout_tags/lower_body_tag.dart';
+import 'package:auksine_bycke/utils/workout_tags/muscle_tag.dart';
 import 'package:auksine_bycke/utils/workout_tags/strength_tag.dart';
 import 'package:auksine_bycke/utils/workout_tags/upper_body_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
@@ -118,8 +123,13 @@ Widget build(BuildContext context) {
                     ExerciseData(name: 'Triceps', sets: 4, reps: 10),
                   ],
                   tags: [
+                    EnduranceTag(),
+                    FatLossTag(),
+                    FullBodyTag(),
                     UpperBodyTag(),
+                    LowerBodyTag(),
                     StrengthTag(),
+                    MuscleTag(),
                   ],
                 ),
               ),

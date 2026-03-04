@@ -85,7 +85,10 @@ class _WorkoutState extends State<Workout> {
               alignment: WrapAlignment.start,
               children: _tags.map((tag) => Chip(
                 label: Text(tag.getTag()),
-                labelStyle: const TextStyle(fontSize: 11),
+                labelStyle: TextStyle(
+                    fontSize: 11,
+                    color: tag.getColor(),
+                ),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               )).toList(),
             ),

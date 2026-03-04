@@ -1,5 +1,8 @@
+import 'dart:ui';
+
 abstract class WorkoutTag {
   String getTag();
+  Color getColor();
 
   @override
   bool operator ==(Object other) {
