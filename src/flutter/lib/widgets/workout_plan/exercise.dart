@@ -26,20 +26,33 @@ class _ExerciseState extends State<Exercise> {
             fontWeight: FontWeight.bold
           ),
         ),
-        Row(
-          spacing: 10,
-          children: [
-            Container(
-              width: 1,
-              height: 20,
-              color: Color.fromARGB(255, 31, 31, 31),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const dotSize = 3.0;
+                const dotSpacing = 6.0;
+                final count = (constraints.maxWidth / (dotSize + dotSpacing)).floor();
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(count, (_) => Container(
+                    width: dotSize,
+                    height: dotSize,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onSurface.withAlpha(51),
+                      shape: BoxShape.circle,
+                    ),
+                  )),
+                );
+              },
             ),
-            Text(
-              "${widget.exerciseData.sets} x ${widget.exerciseData.reps}",
-              style: TextStyle(fontSize: 16),
-            ),
-          ],
-        )
+          ),
+        ),
+        Text(
+          "${widget.exerciseData.sets} x ${widget.exerciseData.reps}",
+          style: TextStyle(fontSize: 16),
+        ),
       ],
     );
   }
