@@ -39,7 +39,7 @@ class _ProgressPageState extends State<ProgressPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Dar nėra išsaugotų workout\'ų.'));
+            return const Center(child: Text('No workouts are currently saved.'));
           }
 
           final workouts = snapshot.data!;
