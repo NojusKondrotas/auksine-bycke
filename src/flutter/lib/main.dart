@@ -1,7 +1,10 @@
 import 'package:auksine_bycke/pages/home_page.dart';
+import 'package:auksine_bycke/services/notification_service.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.initialize();
   runApp(const MyApp());
 }
 

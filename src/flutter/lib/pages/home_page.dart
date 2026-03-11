@@ -94,130 +94,141 @@ Widget build(BuildContext context) {
 class HomeContentPage extends StatelessWidget {
   const HomeContentPage({super.key});
 
-  @override
-Widget build(BuildContext context) {
-  return Padding(
-    padding: const EdgeInsets.all(16),
-    child: SingleChildScrollView(
-      child: Column(
-        spacing: 20,
-        children: [
-          const Text(
-            "Welcome back",
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
+  // ✅ Make today's workout accessible globally
+  static const List<ExerciseData> todaysExercises = [
+    ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
+    ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
+    ExerciseData(name: 'Triceps', sets: 4, reps: 10),
+  ];
 
-          SizedBox(
-            width: 500,
-            child: Card(
-              elevation: 4,
-              child: Stack(
-                children: [
-                  Positioned(
+  // ✅ Used by notification system
+  static String getWorkoutSummary() {
+    return todaysExercises.map((e) => e.name).join(", ");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
+        child: Column(
+          spacing: 20,
+          children: [
+            const Text(
+              "Welcome back",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+
+            // ---------------- TODAY WORKOUT ----------------
+            SizedBox(
+              width: 500,
+              child: Card(
+                elevation: 4,
+                child: Stack(
+                  children: [
+                    Positioned(
                       top: 0,
                       right: 0,
                       child: IconButton(
                         iconSize: 20,
                         onPressed: () {},
                         icon: const Icon(Icons.open_in_full),
-                      )
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Workout(
-                      name: "Today's Workout",
-                      exercises: [
-                        ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
-                        ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
-                        ExerciseData(name: 'Triceps', sets: 4, reps: 10),
-                      ],
-                      tags: [
-                        FatLossTag(),
-                        FullBodyTag(),
-                        UpperBodyTag(),
-                        MuscleTag(),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              )
-            ),
-          ),
-
-          SizedBox(
-            width: 500,
-            child: Card(
-              elevation: 4,
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: IconButton(
-                      iconSize: 20,
-                      onPressed: () {},
-                      icon: const Icon(Icons.open_in_full),
-                    )
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Workout(
-                      name: "Tomorrow's Workout",
-                      exercises: [
-                        ExerciseData(name: 'Biceps', sets: 4, reps: 10),
-                        ExerciseData(name: 'Triceps', sets: 4, reps: 10),
-                      ],
-                      tags: [
-                        EnduranceTag(),
-                        UpperBodyTag(),
-                        StrengthTag(),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Workout(
+                        name: "Today's Workout",
+                        exercises: todaysExercises, // ✅ replaced inline list
+                        tags: [
+                          FatLossTag(),
+                          FullBodyTag(),
+                          UpperBodyTag(),
+                          MuscleTag(),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
 
-          SizedBox(
-            width: 500,
-            child: Card(
-              elevation: 4,
-              child: Stack(
-                children: [
-                  Positioned(
+            // ---------------- TOMORROW WORKOUT ----------------
+            SizedBox(
+              width: 500,
+              child: Card(
+                elevation: 4,
+                child: Stack(
+                  children: [
+                    Positioned(
                       top: 0,
                       right: 0,
                       child: IconButton(
                         iconSize: 20,
                         onPressed: () {},
                         icon: const Icon(Icons.open_in_full),
-                      )
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Workout(
-                      name: "Marta's Workout",
-                      exercises: [
-                        ExerciseData(name: 'Biceps', sets: 4, reps: 12),
-                        ExerciseData(name: 'Press', sets: 3, reps: 20),
-                        ExerciseData(name: 'Dumbbells', sets: 4, reps: 10),
-                      ],
-                      tags: [
-                        UpperBodyTag(),
-                        StrengthTag(),
-                        LowerBodyTag(),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              )
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Workout(
+                        name: "Tomorrow's Workout",
+                        exercises: [
+                          ExerciseData(name: 'Biceps', sets: 4, reps: 10),
+                          ExerciseData(name: 'Triceps', sets: 4, reps: 10),
+                        ],
+                        tags: [
+                          EnduranceTag(),
+                          UpperBodyTag(),
+                          StrengthTag(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+
+            // ---------------- MARTA WORKOUT ----------------
+            SizedBox(
+              width: 500,
+              child: Card(
+                elevation: 4,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: IconButton(
+                        iconSize: 20,
+                        onPressed: () {},
+                        icon: const Icon(Icons.open_in_full),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Workout(
+                        name: "Marta's Workout",
+                        exercises: [
+                          ExerciseData(name: 'Biceps', sets: 4, reps: 12),
+                          ExerciseData(name: 'Press', sets: 3, reps: 20),
+                          ExerciseData(name: 'Dumbbells', sets: 4, reps: 10),
+                        ],
+                        tags: [
+                          UpperBodyTag(),
+                          StrengthTag(),
+                          LowerBodyTag(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
