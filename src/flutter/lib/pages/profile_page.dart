@@ -23,16 +23,29 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
-  Future<void> _loadProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _weightController.text = prefs.getString('weight') ?? '';
-      _heightController.text = prefs.getString('height') ?? '';
-      _ageController.text    = prefs.getString('age') ?? '';
-      _bicepsController.text = prefs.getString('biceps') ?? '';
-      _gender                = prefs.getString('gender') ?? 'Male';
-    });
-  }
+  // Future<void> _loadProfile() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   setState(() {
+  //     _weightController.text = prefs.getString('weight') ?? '';
+  //     _heightController.text = prefs.getString('height') ?? '';
+  //     _ageController.text    = prefs.getString('age') ?? '';
+  //     _bicepsController.text = prefs.getString('biceps') ?? '';
+  //     _gender                = prefs.getString('gender') ?? 'Male';
+  //   });
+  // }
+Future<void> _loadProfile() async {
+  final prefs = await SharedPreferences.getInstance();
+  final savedGender = prefs.getString('gender') ?? 'Male';
+  const validGenders = ['Male', 'Female', 'Other'];
+
+  setState(() {
+    _weightController.text = prefs.getString('weight') ?? '';
+    _heightController.text = prefs.getString('height') ?? '';
+    _ageController.text    = prefs.getString('age') ?? '';
+    _bicepsController.text = prefs.getString('biceps') ?? '';
+    _gender = validGenders.contains(savedGender) ? savedGender : 'Male';
+  });
+}
 
   Future<void> _saveProfile() async {
     final prefs = await SharedPreferences.getInstance();
