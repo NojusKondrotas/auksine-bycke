@@ -1,6 +1,5 @@
 import 'package:auksine_bycke/pages/profile_page.dart';
 import 'package:auksine_bycke/pages/progress_page.dart';
-import 'package:auksine_bycke/pages/settings_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
 import 'package:auksine_bycke/utils/exercise_data.dart';
 import 'package:auksine_bycke/utils/workout_tags/endurance_tag.dart';
@@ -37,71 +36,67 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-Widget build(BuildContext context) {
-  final List<Widget> pages = [
-    const HomeContentPage(),
-    WorkoutPage(),
-    ProgressPage(),
-    ProfilePage(),
-    SettingsPage(
-      onThemeChanged: widget.onThemeChanged,
-      isDarkMode: widget.isDarkMode,
-    ),
-  ];
+  Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      const HomeContentPage(),
+      WorkoutPage(),
+      ProgressPage(),
+      ProfilePage(
+        onThemeChanged: widget.onThemeChanged,
+        isDarkMode: widget.isDarkMode,
+      ),
+    ];
 
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text("Auksinė byckė"),
-      centerTitle: true,
-    ),
-    body: Column(
-      children: [
-        Expanded(
-          child: pages[selectedIndex],
-        ),
-        if (selectedIndex == 0)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: ElevatedButton(
-              onPressed: () {
-                navigateBottomBar(3);
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text("Start Workout"),
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Auksinė byckė"),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: pages[selectedIndex],
           ),
-      ],
-    ),
-    bottomNavigationBar: BottomNavigationBar(
-      showUnselectedLabels: true,
-      currentIndex: selectedIndex,
-      onTap: navigateBottomBar,
-      type: BottomNavigationBarType.fixed,
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-        BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
-        BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-      ],
-    ),
-  );
-}
+          if (selectedIndex == 0)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: () {
+                  navigateBottomBar(3);
+                },
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                child: const Text("Start Workout"),
+              ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        showUnselectedLabels: true,
+        currentIndex: selectedIndex,
+        onTap: navigateBottomBar,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
+      ),
+    );
+  }
 }
 
 class HomeContentPage extends StatelessWidget {
   const HomeContentPage({super.key});
 
-  // ✅ Make today's workout accessible globally
   static const List<ExerciseData> todaysExercises = [
     ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
     ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
     ExerciseData(name: 'Triceps', sets: 4, reps: 10),
   ];
 
-  // ✅ Used by notification system
   static String getWorkoutSummary() {
     return todaysExercises.map((e) => e.name).join(", ");
   }
@@ -140,7 +135,7 @@ class HomeContentPage extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       child: Workout(
                         name: "Today's Workout",
-                        exercises: todaysExercises, // ✅ replaced inline list
+                        exercises: todaysExercises,
                         tags: [
                           FatLossTag(),
                           FullBodyTag(),

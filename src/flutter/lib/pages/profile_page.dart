@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/pages/register_page.dart';
+import 'package:auksine_bycke/pages/settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final Function(bool) onThemeChanged;
+  final bool isDarkMode;
+
+  const ProfilePage({
+    super.key,
+    required this.onThemeChanged,
+    required this.isDarkMode,
+  });
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -23,29 +31,19 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfile();
   }
 
-  // Future<void> _loadProfile() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   setState(() {
-  //     _weightController.text = prefs.getString('weight') ?? '';
-  //     _heightController.text = prefs.getString('height') ?? '';
-  //     _ageController.text    = prefs.getString('age') ?? '';
-  //     _bicepsController.text = prefs.getString('biceps') ?? '';
-  //     _gender                = prefs.getString('gender') ?? 'Male';
-  //   });
-  // }
-Future<void> _loadProfile() async {
-  final prefs = await SharedPreferences.getInstance();
-  final savedGender = prefs.getString('gender') ?? 'Male';
-  const validGenders = ['Male', 'Female', 'Other'];
+  Future<void> _loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedGender = prefs.getString('gender') ?? 'Male';
+    const validGenders = ['Male', 'Female', 'Other'];
 
-  setState(() {
-    _weightController.text = prefs.getString('weight') ?? '';
-    _heightController.text = prefs.getString('height') ?? '';
-    _ageController.text    = prefs.getString('age') ?? '';
-    _bicepsController.text = prefs.getString('biceps') ?? '';
-    _gender = validGenders.contains(savedGender) ? savedGender : 'Male';
-  });
-}
+    setState(() {
+      _weightController.text = prefs.getString('weight') ?? '';
+      _heightController.text = prefs.getString('height') ?? '';
+      _ageController.text    = prefs.getString('age') ?? '';
+      _bicepsController.text = prefs.getString('biceps') ?? '';
+      _gender = validGenders.contains(savedGender) ? savedGender : 'Male';
+    });
+  }
 
   Future<void> _saveProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -131,9 +129,9 @@ Future<void> _loadProfile() async {
                 prefixIcon: Icon(Icons.person),
               ),
               items: const [
-                DropdownMenuItem(value: 'Male',  child: Text('Male')),
+                DropdownMenuItem(value: 'Male',   child: Text('Male')),
                 DropdownMenuItem(value: 'Female', child: Text('Female')),
-                DropdownMenuItem(value: 'Other',   child: Text('Other')),
+                DropdownMenuItem(value: 'Other',  child: Text('Other')),
               ],
               onChanged: (val) => setState(() => _gender = val!),
             ),
@@ -166,6 +164,28 @@ Future<void> _loadProfile() async {
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Register Now'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SettingsPage(
+                        onThemeChanged: widget.onThemeChanged,
+                        isDarkMode: widget.isDarkMode,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.settings),
+                label: const Text('Settings'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
           ],
