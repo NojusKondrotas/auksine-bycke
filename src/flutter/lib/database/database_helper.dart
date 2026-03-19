@@ -17,14 +17,16 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'workouts.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2, // Padidinta versija iš 1 į 2
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE workouts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             duration INTEGER,
-            date TEXT
+            date TEXT,
+            rating INTEGER,    -- NAUJAS STULPELIS
+            comment TEXT       -- NAUJAS STULPELIS
           )
         ''');
         await db.execute('''
@@ -45,6 +47,12 @@ class DatabaseHelper {
           )
         ''');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE workouts ADD COLUMN rating INTEGER');
+          await db.execute('ALTER TABLE workouts ADD COLUMN comment TEXT');
+        }
+      },
     );
   }
 
@@ -56,6 +64,8 @@ class DatabaseHelper {
         'name': workout.name,
         'duration': workout.duration,
         'date': workout.date.toIso8601String(),
+        'rating': workout.rating,
+        'comment': workout.comment,
       });
 
       for (final exercise in workout.exercises) {
@@ -103,29 +113,40 @@ class DatabaseHelper {
         );
 
         final sets = setRows
-            .map((s) => SetModel(
-                  id: s['id'] as int,
-                  exerciseId: exerciseId,
-                  reps: s['reps'] as int,
-                  weight: s['weight'] as double,
-                ))
+            .map(
+              (s) => SetModel(
+                id: s['id'] as int,
+                exerciseId: exerciseId,
+                reps: s['reps'] as int,
+                weight: (s['weight'] as num)
+                    .toDouble(),
+              ),
+            )
             .toList();
 
-        exercises.add(ExerciseModel(
-          id: exerciseId,
-          workoutId: workoutId,
-          name: exRow['name'] as String,
-          sets: sets,
-        ));
+        exercises.add(
+          ExerciseModel(
+            id: exerciseId,
+            workoutId: workoutId,
+            name: exRow['name'] as String,
+            sets: sets,
+          ),
+        );
       }
 
-      workouts.add(WorkoutModel(
-        id: workoutId,
-        name: row['name'] as String,
-        duration: row['duration'] as int,
-        date: DateTime.parse(row['date'] as String),
-        exercises: exercises,
-      ));
+      workouts.add(
+        WorkoutModel(
+          id: workoutId,
+          name: row['name'] as String,
+          duration: row['duration'] as int,
+          date: DateTime.parse(row['date'] as String),
+          rating:
+              row['rating'] as int? ??
+              0,
+          comment: row['comment'] as String? ?? '',
+          exercises: exercises,
+        ),
+      );
     }
 
     return workouts;

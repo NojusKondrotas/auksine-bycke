@@ -17,6 +17,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
   bool workoutStarted = false;
   List<Exercise> exercises = [];
 
+  int _selectedRating = 0;
+  final TextEditingController _commentController = TextEditingController();
+
   void startTimer() {
     timer?.cancel();
     timer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -34,64 +37,128 @@ class _WorkoutPageState extends State<WorkoutPage> {
     });
   }
 
-   void saveWorkout() async {
-  print('1. Save paspaustas');
-  print('workoutName: $workoutName');
-
-  if (workoutName.isEmpty) {
-    print('2. Vardas tuscias - rodomas snackbar');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Įvesk workout pavadinimą!')),
-    );
-    return;
-  }
-
-  print('3. Bandoma issaugoti i DB');
-
-  try {
-    stopTimer();
-    final workout = WorkoutModel(
-      name: workoutName,
-      duration: seconds,
-      date: DateTime.now(),
-      exercises: exercises
-          .map((e) => ExerciseModel(
-                name: e.name,
-                sets: e.sets
-                    .map((s) => SetModel(reps: s.reps, weight: s.weight))
-                    .toList(),
-              ))
-          .toList(),
-    );
-
-    await DatabaseHelper.instance.saveWorkout(workout);
-    print('4. Issaugota sekmingai');
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Workout išsaugotas!')),
-      );
-      setState(() {
-        workoutStarted = false;
-        exercises = [];
-        seconds = 0;
-        workoutName = '';
-      });
-    }
-  } catch (e) {
-    print('KLAIDA: $e');
-  }
-}
-
   String get formattedTime {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
   }
 
+  Future<void> _showRatingDialog() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Rate your workout"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text("How did it go?"),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          index < _selectedRating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 32,
+                        ),
+                        onPressed: () {
+                          setDialogState(() => _selectedRating = index + 1);
+                        },
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _commentController,
+                    decoration: const InputDecoration(
+                      hintText: "Comments (optional)...",
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _selectedRating = 0;
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Skip"),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void saveWorkout() async {
+    if (workoutName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter workout name:')),
+      );
+      return;
+    }
+
+    stopTimer();
+    await _showRatingDialog();
+
+    try {
+      final workout = WorkoutModel(
+        name: workoutName,
+        duration: seconds,
+        date: DateTime.now(),
+        rating: _selectedRating,
+        comment: _commentController.text,
+        exercises: exercises
+            .map(
+              (e) => ExerciseModel(
+                name: e.name,
+                sets: e.sets
+                    .map((s) => SetModel(reps: s.reps, weight: s.weight))
+                    .toList(),
+              ),
+            )
+            .toList(),
+      );
+
+      await DatabaseHelper.instance.saveWorkout(workout);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Workout saved!')));
+        setState(() {
+          workoutStarted = false;
+          exercises = [];
+          seconds = 0;
+          workoutName = '';
+          _selectedRating = 0;
+          _commentController.clear();
+        });
+      }
+    } catch (e) {
+      debugPrint('KLAIDA: $e');
+    }
+  }
+
   @override
   void dispose() {
     timer?.cancel();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -105,21 +172,32 @@ class _WorkoutPageState extends State<WorkoutPage> {
               child: Column(
                 children: [
                   TextField(
-                    decoration: const InputDecoration(labelText: "Workout Name"),
+                    decoration: const InputDecoration(
+                      labelText: "Workout Name",
+                    ),
                     onChanged: (val) => workoutName = val,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     formattedTime,
-                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ElevatedButton(onPressed: startTimer, child: const Text("Start")),
+                      ElevatedButton(
+                        onPressed: startTimer,
+                        child: const Text("Start"),
+                      ),
                       const SizedBox(width: 16),
-                      ElevatedButton(onPressed: stopTimer, child: const Text("Stop")),
+                      ElevatedButton(
+                        onPressed: stopTimer,
+                        child: const Text("Stop"),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -129,20 +207,30 @@ class _WorkoutPageState extends State<WorkoutPage> {
                       itemBuilder: (context, index) {
                         return ExerciseCard(
                           exercise: exercises[index],
-                          onChanged: (ex) => setState(() => exercises[index] = ex),
+                          onChanged: (ex) =>
+                              setState(() => exercises[index] = ex),
                         );
                       },
                     ),
                   ),
-                  ElevatedButton(onPressed: addExercise, child: const Text("Add Exercise")),
+                  ElevatedButton(
+                    onPressed: addExercise,
+                    child: const Text("Add Exercise"),
+                  ),
                   const SizedBox(height: 8),
-                  ElevatedButton(onPressed: saveWorkout, child: const Text("Save Workout")),
+                  ElevatedButton(
+                    onPressed: saveWorkout,
+                    child: const Text("Save Workout"),
+                  ),
                 ],
               ),
             )
           : Center(
               child: ElevatedButton(
-                onPressed: () => setState(() => workoutStarted = true),
+                onPressed: () {
+                  setState(() => workoutStarted = true);
+                  startTimer();
+                },
                 child: const Text("New Workout"),
               ),
             ),
@@ -165,7 +253,11 @@ class WorkoutSet {
 class ExerciseCard extends StatefulWidget {
   final Exercise exercise;
   final ValueChanged<Exercise> onChanged;
-  const ExerciseCard({super.key, required this.exercise, required this.onChanged});
+  const ExerciseCard({
+    super.key,
+    required this.exercise,
+    required this.onChanged,
+  });
 
   @override
   State<ExerciseCard> createState() => _ExerciseCardState();
@@ -214,7 +306,8 @@ class _ExerciseCardState extends State<ExerciseCard> {
                       child: TextField(
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(labelText: "Weight"),
-                        onChanged: (val) => s.weight = double.tryParse(val) ?? 0,
+                        onChanged: (val) =>
+                            s.weight = double.tryParse(val) ?? 0,
                       ),
                     ),
                   ],

@@ -3,6 +3,8 @@ class WorkoutModel {
   final String name;
   final int duration;
   final DateTime date;
+  final int rating;
+  final String comment;
   final List<ExerciseModel> exercises;
 
   WorkoutModel({
@@ -10,6 +12,8 @@ class WorkoutModel {
     required this.name,
     required this.duration,
     required this.date,
+    required this.rating,
+    required this.comment,
     required this.exercises,
   });
 }
