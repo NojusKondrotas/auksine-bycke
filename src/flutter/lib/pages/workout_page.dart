@@ -264,6 +264,7 @@ class ExerciseCard extends StatefulWidget {
 }
 
 class _ExerciseCardState extends State<ExerciseCard> {
+  String? _selectedExercise;
   void addSet() {
     setState(() {
       widget.exercise.sets.add(WorkoutSet(reps: 0, weight: 0));
@@ -279,6 +280,15 @@ class _ExerciseCardState extends State<ExerciseCard> {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: "Exercise Type"),
+              initialValue: _selectedExercise,
+              items: const [
+                "Bench Press", "Squat", "Deadlift", "Overhead Press",
+                "Pull-Up", "Barbell Row", "Dumbbell Curl", "Tricep Pushdown",
+              ].map((name) => DropdownMenuItem(value: name, child: Text(name))).toList(),
+              onChanged: (val) => setState(() => _selectedExercise = val),
+            ),
             TextField(
               decoration: const InputDecoration(labelText: "Exercise Name"),
               onChanged: (val) {
