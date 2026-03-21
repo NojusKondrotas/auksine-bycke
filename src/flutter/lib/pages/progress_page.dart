@@ -131,7 +131,7 @@ class _ProgressPageState extends State<ProgressPage> {
                           children: [
                             Text(
                               exercise.name.isEmpty
-                                  ? 'Unnamed Exercise'
+                                  ? 'Bench Press'
                                   : exercise.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,

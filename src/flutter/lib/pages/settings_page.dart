@@ -17,6 +17,21 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _enabled = true;
+  String _permissionStatus = 'Checking...';
+  String _lastTestResult = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissionStatus();
+  }
+
+  Future<void> _checkPermissionStatus() async {
+    final hasPermission = await NotificationService.checkPermissions();
+    setState(() {
+      _permissionStatus = hasPermission ? '✅ Granted' : '❌ Denied';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,21 +81,143 @@ class _SettingsPageState extends State<SettingsPage> {
     ),
     ),
 
-    // 🧪 Test notification button
+    // 🧪 Notification Testing Section
+    const Padding(
+      padding: EdgeInsets.all(16.0),
+      child: Text(
+        'Notification Testing',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    ),
+
+    // Permission Status
     ListTile(
-      leading: const Icon(Icons.bug_report),
-      title: const Text("Test Notification"),
-      splashColor: Colors.grey,
+      leading: const Icon(Icons.security),
+      title: const Text('Permission Status'),
+      subtitle: Text(_permissionStatus),
+      trailing: IconButton(
+        icon: const Icon(Icons.refresh),
+        onPressed: _checkPermissionStatus,
+      ),
+    ),
+
+    // Test Result Display
+    if (_lastTestResult.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Card(
+          color: Colors.blue.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Text(
+              _lastTestResult,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ),
+      ),
+
+    // Test 1: Foreground Notification
+    ListTile(
+      leading: const Icon(Icons.phone_android, color: Colors.green),
+      title: const Text('Test 1: Foreground Delivery'),
+      subtitle: const Text('Tests notification while app is active'),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: () async {
         if (!_enabled) {
-          print("Notifications are disabled");
+          setState(() {
+            _lastTestResult = '❌ Enable notifications first';
+          });
           return;
         }
 
-        print("Test notification button pressed");
-        await NotificationService.showInstantTestNotification();
+        setState(() {
+          _lastTestResult = '📤 Sending foreground notification...';
+        });
+
+        await NotificationService.testForegroundNotification();
+        
+        setState(() {
+          _lastTestResult = '✅ Foreground notification sent!\nYou should see it appear now.';
+        });
       },
     ),
+
+    // Test 2: Background/Terminated Notification
+    ListTile(
+      leading: const Icon(Icons.schedule, color: Colors.orange),
+      title: const Text('Test 2: Background/Terminated'),
+      subtitle: const Text('Scheduled in 5s - minimize app to test'),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () async {
+        if (!_enabled) {
+          setState(() {
+            _lastTestResult = '❌ Enable notifications first';
+          });
+          return;
+        }
+
+        setState(() {
+          _lastTestResult = '⏰ Notification scheduled for 5 seconds.\n\nMinimize or close the app now to test background/terminated delivery.';
+        });
+
+        await NotificationService.testBackgroundNotification();
+      },
+    ),
+
+    // Test 3: Navigation Test
+    ListTile(
+      leading: const Icon(Icons.navigation, color: Colors.blue),
+      title: const Text('Test 3: Navigation'),
+      subtitle: const Text('Tap notification to navigate to Workouts'),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: () async {
+        if (!_enabled) {
+          setState(() {
+            _lastTestResult = '❌ Enable notifications first';
+          });
+          return;
+        }
+
+        setState(() {
+          _lastTestResult = '🎯 Navigation test notification sent!\n\nTap the notification to navigate to Workouts page.';
+        });
+
+        await NotificationService.testNavigationNotification();
+      },
+    ),
+
+    // Run All Tests
+    Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          if (!_enabled) {
+            setState(() {
+              _lastTestResult = '❌ Enable notifications first';
+            });
+            return;
+          }
+
+          setState(() {
+            _lastTestResult = '🧪 Running all tests...\n\n1. Foreground test sent\n2. Background test scheduled (5s)\n3. Navigation test sent\n\nCheck your notifications!';
+          });
+
+          await NotificationService.testForegroundNotification();
+          await Future.delayed(const Duration(milliseconds: 500));
+          await NotificationService.testBackgroundNotification();
+          await Future.delayed(const Duration(milliseconds: 500));
+          await NotificationService.testNavigationNotification();
+        },
+        icon: const Icon(Icons.play_arrow),
+        label: const Text('Run All Tests'),
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 50),
+        ),
+      ),
+    ),
+
+    const Divider(),
 
     // ℹ About
     ListTile(

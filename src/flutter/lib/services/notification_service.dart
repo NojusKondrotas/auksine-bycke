@@ -5,6 +5,8 @@ import 'package:timezone/data/latest.dart' as tz;
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
+  
+  static Function(String?)? onNotificationTap;
 
   static Future<void> initialize() async {
     tz.initializeTimeZones();
@@ -16,6 +18,9 @@ class NotificationService {
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true, 
     );
 
     const settings = InitializationSettings(
@@ -23,7 +28,15 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _notifications.initialize(settings);
+    await _notifications.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (onNotificationTap != null) {
+          onNotificationTap!(payload);
+        }
+      },
+    );
 
     await _notifications
         .resolvePlatformSpecificImplementation<
@@ -89,6 +102,113 @@ class NotificationService {
       "Today's Workout 💪",
       "Bench Press, Shoulder Press, Triceps",
       notificationDetails,
+      payload: 'workout_page',
+    );
+  }
+
+  static Future<bool> checkPermissions() async {
+    if (await _notifications
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        ) ?? false) {
+      return true;
+    }
+    
+    if (await _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission() ?? false) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  static Future<void> testForegroundNotification() async {
+    const notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'test_channel',
+        'Test Notifications',
+        channelDescription: 'Testing notification delivery',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(
+        sound: 'default',
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.show(
+      1001,
+      "✅ Foreground Test",
+      "This notification was sent while app is in foreground",
+      notificationDetails,
+      payload: 'home',
+    );
+  }
+
+  static Future<void> testBackgroundNotification() async {
+    final scheduledTime = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 5));
+    
+    const notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'test_channel',
+        'Test Notifications',
+        channelDescription: 'Testing notification delivery',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(
+        sound: 'default',
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.zonedSchedule(
+      1002,
+      "🔔 Background Test",
+      "This notification was scheduled for background/terminated state (5s delay)",
+      scheduledTime,
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: 'progress',
+    );
+  }
+
+  static Future<void> testNavigationNotification() async {
+    const notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'test_channel',
+        'Test Notifications',
+        channelDescription: 'Testing notification delivery',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(
+        sound: 'default',
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
+    await _notifications.show(
+      1003,
+      "🎯 Navigation Test",
+      "Tap this notification to navigate to Workouts page",
+      notificationDetails,
+      payload: 'workout_page',
     );
   }
 

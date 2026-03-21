@@ -15,11 +15,13 @@ import 'package:flutter/material.dart';
 class HomePage extends StatefulWidget {
   final Function(bool) onThemeChanged;
   final bool isDarkMode;
+  final int initialPage;
 
   const HomePage({
     super.key,
     required this.onThemeChanged,
     required this.isDarkMode,
+    this.initialPage = 0,
   });
 
   @override
@@ -27,7 +29,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int selectedIndex = 0;
+  late int selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedIndex = widget.initialPage;
+  }
 
   void navigateBottomBar(int index) {
     setState(() {
