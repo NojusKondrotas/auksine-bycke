@@ -151,4 +151,32 @@ class DatabaseHelper {
 
     return workouts;
   }
+
+  // Unikalūs pratimų pavadinimai (filtrui)
+  Future<List<String>> getExerciseNames() async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT DISTINCT name FROM exercises ORDER BY name ASC'
+    );
+   return rows.map((r) => r['name'] as String).toList();
+  }
+
+  // Pratimo progresija per visas treniruotes
+  Future<List<Map<String, dynamic>>> getExerciseProgress(String exerciseName) async {
+    final db = await database;
+    return await db.rawQuery('''
+     SELECT
+        w.date,
+        w.name AS workout_name,
+        MAX(s.weight)          AS max_weight,
+        SUM(s.reps)            AS total_reps,
+        SUM(s.reps * s.weight) AS volume
+      FROM exercises e
+      JOIN sets s     ON s.exercise_id = e.id
+      JOIN workouts w ON w.id = e.workout_id
+      WHERE e.name = ?
+      GROUP BY w.id
+      ORDER BY w.date ASC
+      ''', [exerciseName]);
+  }
 }
