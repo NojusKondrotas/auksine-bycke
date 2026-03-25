@@ -115,7 +115,7 @@ class _ProgressPageState extends State<ProgressPage>
     );
   }
 
-  // ------------------------------------------------------------------ HISTORY TAB 
+  // HISTORY TAB 
   Widget _buildHistoryTab(ThemeData theme) {
     return FutureBuilder<List<WorkoutModel>>(
       future: _workoutsFuture,
@@ -283,13 +283,13 @@ class _ProgressPageState extends State<ProgressPage>
 
                   const SizedBox(height: 16),
 
-                  // // --- Tūris grafkas ---
-                  // _buildChartCard(
-                  //   theme: theme,
-                  //   title: 'Volume (kg × reps)',
-                  //   spots: _spots('volume'),
-                  //   color: Colors.orange,
-                  // ),
+                  // --- Tūris grafkas ---
+                  _buildChartCard(
+                    theme: theme,
+                    title: 'Volume (kg × reps)',
+                    spots: _spots('volume'),
+                    color: Colors.orange,
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -387,7 +387,7 @@ class _ProgressPageState extends State<ProgressPage>
             height: 180,
             child: LineChart(LineChartData(
               minX: 0,
-              maxX: (spots.length - 1).toDouble(), // ✅ tik iki paskutinio taško
+              maxX: (spots.length - 1).toDouble(), // 
               gridData: const FlGridData(show: true),
               borderData: FlBorderData(show: false),
               titlesData: FlTitlesData(
@@ -437,6 +437,7 @@ class _ProgressPageState extends State<ProgressPage>
     ),
   );
 }
+
 
   
 }
