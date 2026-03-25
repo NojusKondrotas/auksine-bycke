@@ -273,13 +273,13 @@ class _ProgressPageState extends State<ProgressPage>
 
                   const SizedBox(height: 16),
 
-                  // // --- Max svoris grafkas ---
-                  // _buildChartCard(
-                  //   theme: theme,
-                  //   title: 'Max Weight (kg)',
-                  //   spots: _spots('max_weight'),
-                  //   color: theme.colorScheme.primary,
-                  // ),
+                  // --- Max svoris grafkas ---
+                  _buildChartCard(
+                    theme: theme,
+                    title: 'Max Weight (kg)',
+                    spots: _spots('max_weight'),
+                    color: theme.colorScheme.primary,
+                  ),
 
                   const SizedBox(height: 16),
 
@@ -358,7 +358,85 @@ class _ProgressPageState extends State<ProgressPage>
     );
   }
 
-  
+  Widget _buildChartCard({
+  required ThemeData theme,
+  required String title,
+  required List<FlSpot> spots,
+  required Color color,
+}) {
+  if (spots.length < 2) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text('$title — need at least 2 sessions for a chart.',
+            style: theme.textTheme.bodySmall),
+      ),
+    );
+  }
+
+  return Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 180,
+            child: LineChart(LineChartData(
+              minX: 0,
+              maxX: (spots.length - 1).toDouble(), // ✅ tik iki paskutinio taško
+              gridData: const FlGridData(show: true),
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 28,
+                    interval: 1, 
+                    getTitlesWidget: (val, meta) {
+                      final i = val.toInt();
+                      if (val != val.roundToDouble()) return const SizedBox();
+                      if (i < 0 || i >= _progressData.length) return const SizedBox();
+                      final date = DateTime.parse(
+                          _progressData[i]['date'] as String);
+                      return Text(
+                        DateFormat('MM/dd').format(date),
+                        style: const TextStyle(fontSize: 10),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true,
+                  color: color,
+                  barWidth: 3,
+                  dotData: const FlDotData(show: true),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: color.withOpacity(0.1),
+                  ),
+                ),
+              ],
+            )),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   
 }
