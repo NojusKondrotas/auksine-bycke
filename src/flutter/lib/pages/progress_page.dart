@@ -16,7 +16,7 @@ class _ProgressPageState extends State<ProgressPage>
   late TabController _tabController;
   late Future<List<WorkoutModel>> _workoutsFuture;
 
-  // --- Statistikos state ---
+  // Statistikos state
   List<String> _exerciseNames = [];
   String? _selectedExercise;
   List<Map<String, dynamic>> _progressData = [];
@@ -229,7 +229,7 @@ class _ProgressPageState extends State<ProgressPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
 
-          // --- Dropdown filtras ---
+          // Dropdown filtras
           DropdownButtonFormField<String>(
             value: _selectedExercise,
             decoration: const InputDecoration(
@@ -250,7 +250,7 @@ class _ProgressPageState extends State<ProgressPage>
 
           const SizedBox(height: 20),
 
-          // --- Turinys ---
+          // Turinys 
           if (_exerciseNames.isEmpty)
             const Expanded(
               child: Center(child: Text('No exercises found.')),
@@ -268,12 +268,12 @@ class _ProgressPageState extends State<ProgressPage>
               child: ListView(
                 children: [
 
-                  // --- Summary kortelės ---
+                  // Summary kortelės
                   _buildSummaryRow(theme),
 
                   const SizedBox(height: 16),
 
-                  // --- Max svoris grafkas ---
+                  // Max svoris grafkas 
                   _buildChartCard(
                     theme: theme,
                     title: 'Max Weight (kg)',
@@ -283,7 +283,7 @@ class _ProgressPageState extends State<ProgressPage>
 
                   const SizedBox(height: 16),
 
-                  // --- Tūris grafkas ---
+                  //Tūris grafkas
                   _buildChartCard(
                     theme: theme,
                     title: 'Volume (kg × reps)',
@@ -293,8 +293,8 @@ class _ProgressPageState extends State<ProgressPage>
 
                   const SizedBox(height: 16),
 
-                  // --- Sąrašas ---
-                  //_buildSessionList(theme),
+                  
+                  _buildSessionList(theme),
                 ],
               ),
             ),
@@ -303,7 +303,7 @@ class _ProgressPageState extends State<ProgressPage>
     );
   }
 
-  // --- 3 summary kortelės viršuje ---
+  // 3 summary kortelės viršuje
   Widget _buildSummaryRow(ThemeData theme) {
     final maxWeight = _progressData
         .map((r) => (r['max_weight'] as num?)?.toDouble() ?? 0)
@@ -387,7 +387,7 @@ class _ProgressPageState extends State<ProgressPage>
             height: 180,
             child: LineChart(LineChartData(
               minX: 0,
-              maxX: (spots.length - 1).toDouble(), // 
+              maxX: (spots.length - 1).toDouble(), 
               gridData: const FlGridData(show: true),
               borderData: FlBorderData(show: false),
               titlesData: FlTitlesData(
@@ -438,6 +438,47 @@ class _ProgressPageState extends State<ProgressPage>
   );
 }
 
-
+// Workout history
+  Widget _buildSessionList(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Session History',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 15)),
+            const SizedBox(height: 8),
+            ..._progressData.reversed.map((row) {
+              final date =
+                  DateTime.parse(row['date'] as String);
+              return ListTile(
+                dense: true,
+                leading:
+                    const Icon(Icons.fitness_center, size: 18),
+                title: Text(row['workout_name'] as String),
+                subtitle:
+                    Text(DateFormat('yyyy-MM-dd').format(date)),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('${row['max_weight']} kg',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                    Text('${row['total_reps']} reps',
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.grey)),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
   
 }
