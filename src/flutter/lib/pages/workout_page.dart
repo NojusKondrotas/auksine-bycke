@@ -1,3 +1,4 @@
+import 'package:auksine_bycke/pages/exercises_browser_page.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
@@ -280,21 +281,30 @@ class _ExerciseCardState extends State<ExerciseCard> {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Exercise Type"),
-              initialValue: _selectedExercise,
-              items: const [
-                "Bench Press", "Squat", "Deadlift", "Overhead Press",
-                "Pull-Up", "Barbell Row", "Dumbbell Curl", "Tricep Pushdown",
-              ].map((name) => DropdownMenuItem(value: name, child: Text(name))).toList(),
-              onChanged: (val) => setState(() => _selectedExercise = val),
-            ),
-            TextField(
-              decoration: const InputDecoration(labelText: "Exercise Name"),
-              onChanged: (val) {
-                widget.exercise.name = val;
-                widget.onChanged(widget.exercise);
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.push<String>(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ExerciseBrowserPage()),
+                );
+                if (result != null) setState(() => _selectedExercise = result);
               },
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: "Exercise"),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _selectedExercise ?? "Browse exercises",
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_right, size: 24),
+                  ],
+                ),
+              ),
             ),
             ListView.builder(
               shrinkWrap: true,
