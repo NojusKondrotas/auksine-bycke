@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:auksine_bycke/database/database_helper.dart';
+import 'package:auksine_bycke/utils/exercise_catalog.dart';
+import 'package:auksine_bycke/utils/exercise_info.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
 
 class ProgressPage extends StatefulWidget {
@@ -17,8 +19,8 @@ class _ProgressPageState extends State<ProgressPage>
   late Future<List<WorkoutModel>> _workoutsFuture;
 
   // Statistikos state
-  List<String> _exerciseNames = [];
-  String? _selectedExercise;
+  List<ExerciseInfo> _exerciseOptions = [];
+  String? _selectedExerciseRefId;
   List<Map<String, dynamic>> _progressData = [];
   bool _statsLoading = false;
 
@@ -27,7 +29,7 @@ class _ProgressPageState extends State<ProgressPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _workoutsFuture = DatabaseHelper.instance.getAllWorkouts();
-    _loadExerciseNames();
+    _loadExerciseOptions();
   }
 
   @override
@@ -51,30 +53,37 @@ class _ProgressPageState extends State<ProgressPage>
   Widget _buildRatingStars(int rating) {
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (i) => Icon(
-        i < rating ? Icons.star : Icons.star_border,
-        color: Colors.amber,
-        size: 16,
-      )),
+      children: List.generate(
+        5,
+        (i) => Icon(
+          i < rating ? Icons.star : Icons.star_border,
+          color: Colors.amber,
+          size: 16,
+        ),
+      ),
     );
   }
 
   // stats
-  Future<void> _loadExerciseNames() async {
-    final names = await DatabaseHelper.instance.getExerciseNames();
+  Future<void> _loadExerciseOptions() async {
+    final ids = await DatabaseHelper.instance.getExerciseReferenceIds();
+    final options = ids.map(getExerciseById).whereType<ExerciseInfo>().toList();
+
     if (!mounted) return;
     setState(() {
-      _exerciseNames = names;
-      if (names.isNotEmpty) {
-        _selectedExercise = names.first;
-        _loadProgress(names.first);
+      _exerciseOptions = options;
+      if (options.isNotEmpty) {
+        _selectedExerciseRefId = options.first.id;
+        _loadProgress(options.first.id);
       }
     });
   }
 
-  Future<void> _loadProgress(String name) async {
+  Future<void> _loadProgress(String exerciseRefId) async {
     setState(() => _statsLoading = true);
-    final data = await DatabaseHelper.instance.getExerciseProgress(name);
+    final data = await DatabaseHelper.instance.getExerciseProgress(
+      exerciseRefId,
+    );
     if (!mounted) return;
     setState(() {
       _progressData = data;
@@ -89,7 +98,6 @@ class _ProgressPageState extends State<ProgressPage>
     }).toList();
   }
 
- 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -107,15 +115,12 @@ class _ProgressPageState extends State<ProgressPage>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildHistoryTab(theme),
-          _buildStatsTab(theme),
-        ],
+        children: [_buildHistoryTab(theme), _buildStatsTab(theme)],
       ),
     );
   }
 
-  // HISTORY TAB 
+  // HISTORY TAB
   Widget _buildHistoryTab(ThemeData theme) {
     return FutureBuilder<List<WorkoutModel>>(
       future: _workoutsFuture,
@@ -179,39 +184,48 @@ class _ProgressPageState extends State<ProgressPage>
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text('"${w.comment}"',
-                                style: theme.textTheme.bodyMedium),
+                            Text(
+                              '"${w.comment}"',
+                              style: theme.textTheme.bodyMedium,
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ...w.exercises.map((exercise) => Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          exercise.name.isEmpty ? 'Bench Press' : exercise.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 4),
-                        ...exercise.sets.asMap().entries.map((entry) {
-                          final i = entry.key + 1;
-                          final s = entry.value;
-                          return Padding(
-                            padding:
-                                const EdgeInsets.only(left: 8.0, bottom: 2),
-                            child: Text(
-                              'Set $i: ${s.reps} reps × ${s.weight} kg',
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          );
-                        }),
-                        const Divider(),
-                      ],
+                  ...w.exercises.map(
+                    (exercise) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            getExerciseById(exercise.exerciseRefId)?.name ??
+                                'Unknown exercise',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          ...exercise.sets.asMap().entries.map((entry) {
+                            final i = entry.key + 1;
+                            final s = entry.value;
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                left: 8.0,
+                                bottom: 2,
+                              ),
+                              child: Text(
+                                'Set $i: ${s.reps} reps × ${s.weight} kg',
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            );
+                          }),
+                          const Divider(),
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               ),
             );
@@ -228,21 +242,25 @@ class _ProgressPageState extends State<ProgressPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           // Dropdown filtras
           DropdownButtonFormField<String>(
-            value: _selectedExercise,
+            value: _selectedExerciseRefId,
             decoration: const InputDecoration(
               labelText: 'Select exercise',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.fitness_center),
             ),
-            items: _exerciseNames
-                .map((n) => DropdownMenuItem(value: n, child: Text(n)))
+            items: _exerciseOptions
+                .map(
+                  (exercise) => DropdownMenuItem(
+                    value: exercise.id,
+                    child: Text(exercise.name),
+                  ),
+                )
                 .toList(),
             onChanged: (val) {
               if (val != null) {
-                setState(() => _selectedExercise = val);
+                setState(() => _selectedExerciseRefId = val);
                 _loadProgress(val);
               }
             },
@@ -250,15 +268,11 @@ class _ProgressPageState extends State<ProgressPage>
 
           const SizedBox(height: 20),
 
-          // Turinys 
-          if (_exerciseNames.isEmpty)
-            const Expanded(
-              child: Center(child: Text('No exercises found.')),
-            )
+          // Turinys
+          if (_exerciseOptions.isEmpty)
+            const Expanded(child: Center(child: Text('No exercises found.')))
           else if (_statsLoading)
-            const Expanded(
-              child: Center(child: CircularProgressIndicator()),
-            )
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_progressData.isEmpty)
             const Expanded(
               child: Center(child: Text('No data for this exercise yet.')),
@@ -267,13 +281,12 @@ class _ProgressPageState extends State<ProgressPage>
             Expanded(
               child: ListView(
                 children: [
-
                   // Summary kortelės
                   _buildSummaryRow(theme),
 
                   const SizedBox(height: 16),
 
-                  // Max svoris grafkas 
+                  // Max svoris grafkas
                   _buildChartCard(
                     theme: theme,
                     title: 'Max Weight (kg)',
@@ -293,7 +306,6 @@ class _ProgressPageState extends State<ProgressPage>
 
                   const SizedBox(height: 16),
 
-                  
                   _buildSessionList(theme),
                 ],
               ),
@@ -319,17 +331,29 @@ class _ProgressPageState extends State<ProgressPage>
       children: [
         _summaryCard(theme, 'Sessions', '$sessions', Icons.event_repeat),
         const SizedBox(width: 8),
-        _summaryCard(theme, 'Max Weight',
-            '${maxWeight.toStringAsFixed(1)} kg', Icons.emoji_events),
+        _summaryCard(
+          theme,
+          'Max Weight',
+          '${maxWeight.toStringAsFixed(1)} kg',
+          Icons.emoji_events,
+        ),
         const SizedBox(width: 8),
-        _summaryCard(theme, 'Total Volume',
-            '${totalVolume.toStringAsFixed(0)} kg', Icons.bar_chart),
+        _summaryCard(
+          theme,
+          'Total Volume',
+          '${totalVolume.toStringAsFixed(0)} kg',
+          Icons.bar_chart,
+        ),
       ],
     );
   }
 
   Widget _summaryCard(
-      ThemeData theme, String label, String value, IconData icon) {
+    ThemeData theme,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Expanded(
       child: Card(
         color: theme.colorScheme.primaryContainer,
@@ -339,18 +363,21 @@ class _ProgressPageState extends State<ProgressPage>
             children: [
               Icon(icon, size: 20, color: theme.colorScheme.primary),
               const SizedBox(height: 6),
-              Text(value,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  )),
-              Text(label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: theme.colorScheme.onPrimaryContainer
-                        .withOpacity(0.7),
-                  )),
+              Text(
+                value,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: theme.colorScheme.onPrimaryContainer.withOpacity(0.7),
+                ),
+              ),
             ],
           ),
         ),
@@ -359,86 +386,100 @@ class _ProgressPageState extends State<ProgressPage>
   }
 
   Widget _buildChartCard({
-  required ThemeData theme,
-  required String title,
-  required List<FlSpot> spots,
-  required Color color,
-}) {
-  if (spots.length < 2) {
+    required ThemeData theme,
+    required String title,
+    required List<FlSpot> spots,
+    required Color color,
+  }) {
+    if (spots.length < 2) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            '$title — need at least 2 sessions for a chart.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ),
+      );
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text('$title — need at least 2 sessions for a chart.',
-            style: theme.textTheme.bodySmall),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 180,
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: (spots.length - 1).toDouble(),
+                  gridData: const FlGridData(show: true),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        interval: 1,
+                        getTitlesWidget: (val, meta) {
+                          final i = val.toInt();
+                          if (val != val.roundToDouble())
+                            return const SizedBox();
+                          if (i < 0 || i >= _progressData.length)
+                            return const SizedBox();
+                          final date = DateTime.parse(
+                            _progressData[i]['date'] as String,
+                          );
+                          return Text(
+                            DateFormat('MM/dd').format(date),
+                            style: const TextStyle(fontSize: 10),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      color: color,
+                      barWidth: 3,
+                      dotData: const FlDotData(show: true),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: color.withOpacity(0.1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  return Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 180,
-            child: LineChart(LineChartData(
-              minX: 0,
-              maxX: (spots.length - 1).toDouble(), 
-              gridData: const FlGridData(show: true),
-              borderData: FlBorderData(show: false),
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: true, reservedSize: 40),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 28,
-                    interval: 1, 
-                    getTitlesWidget: (val, meta) {
-                      final i = val.toInt();
-                      if (val != val.roundToDouble()) return const SizedBox();
-                      if (i < 0 || i >= _progressData.length) return const SizedBox();
-                      final date = DateTime.parse(
-                          _progressData[i]['date'] as String);
-                      return Text(
-                        DateFormat('MM/dd').format(date),
-                        style: const TextStyle(fontSize: 10),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: spots,
-                  isCurved: true,
-                  color: color,
-                  barWidth: 3,
-                  dotData: const FlDotData(show: true),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    color: color.withOpacity(0.1),
-                  ),
-                ),
-              ],
-            )),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-// Workout history
+  // Workout history
   Widget _buildSessionList(ThemeData theme) {
     return Card(
       child: Padding(
@@ -446,31 +487,33 @@ class _ProgressPageState extends State<ProgressPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Session History',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 15)),
+            const Text(
+              'Session History',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
             const SizedBox(height: 8),
             ..._progressData.reversed.map((row) {
-              final date =
-                  DateTime.parse(row['date'] as String);
+              final date = DateTime.parse(row['date'] as String);
               return ListTile(
                 dense: true,
-                leading:
-                    const Icon(Icons.fitness_center, size: 18),
+                leading: const Icon(Icons.fitness_center, size: 18),
                 title: Text(row['workout_name'] as String),
-                subtitle:
-                    Text(DateFormat('yyyy-MM-dd').format(date)),
+                subtitle: Text(DateFormat('yyyy-MM-dd').format(date)),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('${row['max_weight']} kg',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13)),
-                    Text('${row['total_reps']} reps',
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.grey)),
+                    Text(
+                      '${row['max_weight']} kg',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      '${row['total_reps']} reps',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
                   ],
                 ),
               );
@@ -480,5 +523,4 @@ class _ProgressPageState extends State<ProgressPage>
       ),
     );
   }
-  
 }

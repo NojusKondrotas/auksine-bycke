@@ -21,13 +21,13 @@ class WorkoutModel {
 class ExerciseModel {
   final int? id;
   final int? workoutId;
-  final String name;
+  final String exerciseRefId;
   final List<SetModel> sets;
 
   ExerciseModel({
     this.id,
     this.workoutId,
-    required this.name,
+    required this.exerciseRefId,
     required this.sets,
   });
 }

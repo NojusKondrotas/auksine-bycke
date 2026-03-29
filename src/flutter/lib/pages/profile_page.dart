@@ -39,7 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() {
       _weightController.text = prefs.getString('weight') ?? '';
       _heightController.text = prefs.getString('height') ?? '';
-      _ageController.text    = prefs.getString('age') ?? '';
+      _ageController.text = prefs.getString('age') ?? '';
       _bicepsController.text = prefs.getString('biceps') ?? '';
       _gender = validGenders.contains(savedGender) ? savedGender : 'Male';
     });
@@ -49,13 +49,13 @@ class _ProfilePageState extends State<ProfilePage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('weight', _weightController.text);
     await prefs.setString('height', _heightController.text);
-    await prefs.setString('age',    _ageController.text);
+    await prefs.setString('age', _ageController.text);
     await prefs.setString('biceps', _bicepsController.text);
     await prefs.setString('gender', _gender);
     setState(() => _saved = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profile saved!')));
   }
 
   @override
@@ -70,7 +70,26 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsPage(
+                    onThemeChanged: widget.onThemeChanged,
+                    isDarkMode: widget.isDarkMode,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -129,9 +148,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 prefixIcon: Icon(Icons.person),
               ),
               items: const [
-                DropdownMenuItem(value: 'Male',   child: Text('Male')),
+                DropdownMenuItem(value: 'Male', child: Text('Male')),
                 DropdownMenuItem(value: 'Female', child: Text('Female')),
-                DropdownMenuItem(value: 'Other',  child: Text('Other')),
+                DropdownMenuItem(value: 'Other', child: Text('Other')),
               ],
               onChanged: (val) => setState(() => _gender = val!),
             ),
@@ -156,7 +175,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const RegisterPage()),
+                    MaterialPageRoute(
+                      builder: (context) => const RegisterPage(),
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
@@ -164,28 +185,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Register Now'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SettingsPage(
-                        onThemeChanged: widget.onThemeChanged,
-                        isDarkMode: widget.isDarkMode,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.settings),
-                label: const Text('Settings'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                ),
               ),
             ),
           ],

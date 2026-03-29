@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
 
 class DatabaseHelper {
@@ -17,7 +18,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'workouts.db');
     return openDatabase(
       path,
-      version: 2, // Padidinta versija iš 1 į 2
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE workouts (
@@ -33,6 +34,7 @@ class DatabaseHelper {
           CREATE TABLE exercises (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             workout_id INTEGER,
+            exercise_ref_id TEXT,
             name TEXT,
             FOREIGN KEY (workout_id) REFERENCES workouts(id)
           )
@@ -52,6 +54,11 @@ class DatabaseHelper {
           await db.execute('ALTER TABLE workouts ADD COLUMN rating INTEGER');
           await db.execute('ALTER TABLE workouts ADD COLUMN comment TEXT');
         }
+        if (oldVersion < 3) {
+          await db.execute(
+            'ALTER TABLE exercises ADD COLUMN exercise_ref_id TEXT',
+          );
+        }
       },
     );
   }
@@ -69,9 +76,12 @@ class DatabaseHelper {
       });
 
       for (final exercise in workout.exercises) {
+        final exerciseInfo = getExerciseById(exercise.exerciseRefId);
         final exerciseId = await txn.insert('exercises', {
           'workout_id': workoutId,
-          'name': exercise.name,
+          'exercise_ref_id': exercise.exerciseRefId,
+          // Keep denormalized name for backward compatibility with old data views.
+          'name': exerciseInfo?.name,
         });
 
         for (final set in exercise.sets) {
@@ -118,8 +128,7 @@ class DatabaseHelper {
                 id: s['id'] as int,
                 exerciseId: exerciseId,
                 reps: s['reps'] as int,
-                weight: (s['weight'] as num)
-                    .toDouble(),
+                weight: (s['weight'] as num).toDouble(),
               ),
             )
             .toList();
@@ -128,7 +137,9 @@ class DatabaseHelper {
           ExerciseModel(
             id: exerciseId,
             workoutId: workoutId,
-            name: exRow['name'] as String,
+            exerciseRefId:
+                (exRow['exercise_ref_id'] as String?) ??
+                (getExerciseByName((exRow['name'] as String?) ?? '')?.id ?? ''),
             sets: sets,
           ),
         );
@@ -140,9 +151,7 @@ class DatabaseHelper {
           name: row['name'] as String,
           duration: row['duration'] as int,
           date: DateTime.parse(row['date'] as String),
-          rating:
-              row['rating'] as int? ??
-              0,
+          rating: row['rating'] as int? ?? 0,
           comment: row['comment'] as String? ?? '',
           exercises: exercises,
         ),
@@ -152,19 +161,20 @@ class DatabaseHelper {
     return workouts;
   }
 
-  // Unikalūs pratimų pavadinimai (filtrui)
-  Future<List<String>> getExerciseNames() async {
+  Future<List<String>> getExerciseReferenceIds() async {
     final db = await database;
     final rows = await db.rawQuery(
-      'SELECT DISTINCT name FROM exercises ORDER BY name ASC'
+      'SELECT DISTINCT exercise_ref_id FROM exercises WHERE exercise_ref_id IS NOT NULL ORDER BY exercise_ref_id ASC',
     );
-   return rows.map((r) => r['name'] as String).toList();
+    return rows.map((r) => r['exercise_ref_id'] as String).toList();
   }
 
-  // Pratimo progresija per visas treniruotes
-  Future<List<Map<String, dynamic>>> getExerciseProgress(String exerciseName) async {
+  Future<List<Map<String, dynamic>>> getExerciseProgress(
+    String exerciseRefId,
+  ) async {
     final db = await database;
-    return await db.rawQuery('''
+    return await db.rawQuery(
+      '''
      SELECT
         w.date,
         w.name AS workout_name,
@@ -174,9 +184,11 @@ class DatabaseHelper {
       FROM exercises e
       JOIN sets s     ON s.exercise_id = e.id
       JOIN workouts w ON w.id = e.workout_id
-      WHERE e.name = ?
+      WHERE e.exercise_ref_id = ?
       GROUP BY w.id
       ORDER BY w.date ASC
-      ''', [exerciseName]);
+      ''',
+      [exerciseRefId],
+    );
   }
 }

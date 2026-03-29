@@ -1,4 +1,5 @@
 import 'package:auksine_bycke/pages/exercises_browser_page.dart';
+import 'package:auksine_bycke/utils/exercise_info.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
@@ -34,7 +35,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   void addExercise() {
     setState(() {
-      exercises.add(Exercise(name: '', sets: [WorkoutSet(reps: 0, weight: 0)]));
+      exercises.add(
+        Exercise(exercise: null, sets: [WorkoutSet(reps: 0, weight: 0)]),
+      );
     });
   }
 
@@ -108,8 +111,17 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   void saveWorkout() async {
     if (workoutName.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter workout name:')));
+      return;
+    }
+
+    if (exercises.any((e) => e.exercise == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter workout name:')),
+        const SnackBar(
+          content: Text('Select a predefined exercise for each card.'),
+        ),
       );
       return;
     }
@@ -127,7 +139,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
         exercises: exercises
             .map(
               (e) => ExerciseModel(
-                name: e.name,
+                exerciseRefId: e.exercise!.id,
                 sets: e.sets
                     .map((s) => SetModel(reps: s.reps, weight: s.weight))
                     .toList(),
@@ -240,9 +252,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
 }
 
 class Exercise {
-  String name;
+  ExerciseInfo? exercise;
   List<WorkoutSet> sets;
-  Exercise({required this.name, required this.sets});
+  Exercise({required this.exercise, required this.sets});
 }
 
 class WorkoutSet {
@@ -265,7 +277,6 @@ class ExerciseCard extends StatefulWidget {
 }
 
 class _ExerciseCardState extends State<ExerciseCard> {
-  String? _selectedExercise;
   void addSet() {
     setState(() {
       widget.exercise.sets.add(WorkoutSet(reps: 0, weight: 0));
@@ -281,30 +292,33 @@ class _ExerciseCardState extends State<ExerciseCard> {
         padding: const EdgeInsets.all(8),
         child: Column(
           children: [
-            GestureDetector(
-              onTap: () async {
-                final result = await Navigator.push<String>(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ExerciseBrowserPage()),
-                );
-                if (result != null) setState(() => _selectedExercise = result);
-              },
-              child: InputDecorator(
-                decoration: const InputDecoration(labelText: "Exercise"),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _selectedExercise ?? "Browse exercises",
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).hintColor,
-                      ),
-                    ),
-                    const Icon(Icons.arrow_right, size: 24),
-                  ],
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.exercise.exercise?.name ?? 'No exercise selected',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
-              ),
+                TextButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push<ExerciseInfo>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ExerciseBrowserPage(),
+                      ),
+                    );
+                    if (result != null) {
+                      setState(() {
+                        widget.exercise.exercise = result;
+                        widget.onChanged(widget.exercise);
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.search),
+                  label: const Text('Select Exercise'),
+                ),
+              ],
             ),
             ListView.builder(
               shrinkWrap: true,
