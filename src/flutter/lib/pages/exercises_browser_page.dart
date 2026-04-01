@@ -12,6 +12,10 @@ class ExerciseBrowserPage extends StatefulWidget {
 
 class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
   int? _expandedIndex;
+  final List<GlobalKey> _keys = List.generate(
+    predefinedExercises.length,
+        (_) => GlobalKey(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +30,7 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
           final isExpanded = _expandedIndex == index;
 
           return Card(
+            key: _keys[index],
             child: Column(
               children: [
                 ListTile(
@@ -36,9 +41,19 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
                         ? Icons.keyboard_arrow_up
                         : Icons.keyboard_arrow_down,
                   ),
-                  onTap: () => setState(
-                        () => _expandedIndex = isExpanded ? null : index,
-                  ),
+                  onTap: () {
+                    setState(() => _expandedIndex = isExpanded ? null : index);
+                    if (!isExpanded) {
+                      Future.delayed(const Duration(milliseconds: 200), () {
+                        Scrollable.ensureVisible(
+                          _keys[index].currentContext!,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+                        );
+                      });
+                    }
+                  },
                 ),
                 ClipRect(
                   child: AnimatedAlign(
