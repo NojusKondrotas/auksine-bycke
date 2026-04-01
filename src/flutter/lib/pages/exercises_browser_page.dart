@@ -40,57 +40,68 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
                         () => _expandedIndex = isExpanded ? null : index,
                   ),
                 ),
-                if (isExpanded) ...[
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
+                ClipRect(
+                  child: AnimatedAlign(
+                    alignment: Alignment.topCenter,
+                    heightFactor: isExpanded ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(exercise.fullDescription),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(exercise.fullDescription),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Container(
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
                                 height: 120,
                                 decoration: BoxDecoration(
                                   color: Colors.black26,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Container(
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  borderRadius: BorderRadius.circular(8),
+                              if (widget.selectable) ...[
+                                const SizedBox(height: 12),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(context, exercise),
+                                  child: const Text('Select'),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.black26,
-                            borderRadius: BorderRadius.circular(8),
+                              ],
+                            ],
                           ),
                         ),
-                        if (widget.selectable) ...[
-                          const SizedBox(height: 12),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context, exercise),
-                            child: const Text('Select'),
-                          ),
-                        ],
                       ],
                     ),
                   ),
-                ],
+                ),
               ],
             ),
           );
