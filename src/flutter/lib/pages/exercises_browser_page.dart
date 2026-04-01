@@ -2,7 +2,9 @@ import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:flutter/material.dart';
 
 class ExerciseBrowserPage extends StatefulWidget {
-  const ExerciseBrowserPage({super.key});
+  const ExerciseBrowserPage({super.key, this.selectable = true});
+
+  final bool selectable;
 
   @override
   State<ExerciseBrowserPage> createState() => _ExerciseBrowserPageState();
@@ -43,18 +45,48 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(exercise.fullDescription),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FilledButton(
-                            onPressed: () =>
-                                Navigator.pop(context, exercise),
-                            child: const Text('Select'),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  color: Colors.black26,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  color: Colors.black26,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        if (widget.selectable) ...[
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, exercise),
+                            child: const Text('Select'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
