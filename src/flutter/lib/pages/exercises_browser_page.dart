@@ -1,86 +1,123 @@
-import 'package:auksine_bycke/utils/exercise_info.dart';
+import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:flutter/material.dart';
 
-const _exercises = [
-  ExerciseInfo(
-    id: '1',
-    name: 'Bench Press',
-    shortDescription: 'Horizontal push.',
-    fullDescription: 'A compound pressing movement performed supine on a bench. Primarily targets the pectoralis major, with secondary involvement of the anterior deltoid and triceps.',
-    mediaIds: [],
-  ),
-  ExerciseInfo(
-    id: '2',
-    name: 'Squat',
-    shortDescription: 'Bilateral leg drive.',
-    fullDescription: 'A foundational lower-body movement loaded through the axial skeleton. Recruits the quadriceps, glutes, and erector spinae through a full knee and hip flexion cycle.',
-    mediaIds: [],
-  ),
-  ExerciseInfo(
-    id: '3',
-    name: 'Deadlift',
-    shortDescription: 'Hip hinge pull.',
-    fullDescription: 'A posterior chain dominant lift initiating from a dead stop on the floor. Engages the hamstrings, glutes, spinal erectors, and upper back under maximal tension.',
-    mediaIds: [],
-  ),
-  ExerciseInfo(
-    id: '4',
-    name: 'Overhead Press',
-    shortDescription: 'Vertical push.',
-    fullDescription: 'A standing barbell press performed in the vertical plane. Primarily loads the deltoids and triceps, demanding significant core and upper back stabilisation.',
-    mediaIds: [],
-  ),
-  ExerciseInfo(
-    id: '5',
-    name: 'Pull-Up',
-    shortDescription: 'Vertical pull.',
-    fullDescription: 'A bodyweight vertical pulling movement. Targets the latissimus dorsi and biceps brachii, with the grip width dictating emphasis across the back.',
-    mediaIds: [],
-  ),
-  ExerciseInfo(
-    id: '6',
-    name: 'Barbell Row',
-    shortDescription: 'Horizontal pull.',
-    fullDescription: 'A bent-over rowing movement against horizontal resistance. Develops the mid and upper back — rhomboids, traps, and rear deltoids — with significant isometric demand on the lower back.',
-    mediaIds: [],
-  ),
-  ExerciseInfo(
-    id: '7',
-    name: 'Dumbbell Curl',
-    shortDescription: 'Elbow flexion.',
-    fullDescription: 'An isolation movement targeting the biceps brachii through a full range of elbow flexion. Dumbbells allow independent arm tracking and supination throughout the curl.',
-    mediaIds: [],
-  ),
-  ExerciseInfo(
-    id: '8',
-    name: 'Tricep Pushdown',
-    shortDescription: 'Elbow extension.',
-    fullDescription: 'A cable-based isolation exercise for the triceps brachii. The fixed upper arm position eliminates shoulder involvement, placing the entire load through elbow extension.',
-    mediaIds: [],
-  ),
-];
+class ExerciseBrowserPage extends StatefulWidget {
+  const ExerciseBrowserPage({super.key, this.selectable = true});
 
-class ExerciseBrowserPage extends StatelessWidget {
-  const ExerciseBrowserPage({super.key});
+  final bool selectable;
+
+  @override
+  State<ExerciseBrowserPage> createState() => _ExerciseBrowserPageState();
+}
+
+class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
+  int? _expandedIndex;
+  final List<GlobalKey> _keys = List.generate(
+    predefinedExercises.length,
+        (_) => GlobalKey(),
+  );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Exercises'),
-      ),
+      appBar: AppBar(title: const Text('Exercises')),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: _exercises.length,
+        itemCount: predefinedExercises.length,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
-          final exercise = _exercises[index];
+          final exercise = predefinedExercises[index];
+          final isExpanded = _expandedIndex == index;
+
           return Card(
-            child: ListTile(
-              title: Text(exercise.name),
-              subtitle: Text(exercise.shortDescription),
-              trailing: const Icon(Icons.keyboard_arrow_down),
-              onTap: () => Navigator.pop(context, exercise),
+            key: _keys[index],
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text(exercise.name),
+                  subtitle: Text(exercise.shortDescription),
+                  trailing: Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                  ),
+                  onTap: () {
+                    setState(() => _expandedIndex = isExpanded ? null : index);
+                    if (!isExpanded) {
+                      Future.delayed(const Duration(milliseconds: 200), () {
+                        Scrollable.ensureVisible(
+                          _keys[index].currentContext!,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+                        );
+                      });
+                    }
+                  },
+                ),
+                ClipRect(
+                  child: AnimatedAlign(
+                    alignment: Alignment.topCenter,
+                    heightFactor: isExpanded ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Divider(height: 1),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(exercise.fullDescription),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Container(
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  color: Colors.black26,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              if (widget.selectable) ...[
+                                const SizedBox(height: 12),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(context, exercise),
+                                  child: const Text('Select'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         },

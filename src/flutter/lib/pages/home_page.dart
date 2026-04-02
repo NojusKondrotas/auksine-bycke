@@ -1,6 +1,7 @@
 import 'package:auksine_bycke/pages/profile_page.dart';
 import 'package:auksine_bycke/pages/progress_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
+import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/utils/exercise_data.dart';
 import 'package:auksine_bycke/utils/workout_tags/endurance_tag.dart';
 import 'package:auksine_bycke/utils/workout_tags/fat_loss_tag.dart';
@@ -56,15 +57,10 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Auksinė byckė"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("Auksinė byckė"), centerTitle: true),
       body: Column(
         children: [
-          Expanded(
-            child: pages[selectedIndex],
-          ),
+          Expanded(child: pages[selectedIndex]),
           if (selectedIndex == 0)
             Padding(
               padding: const EdgeInsets.all(16),
@@ -87,8 +83,14 @@ class _HomePageState extends State<HomePage> {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
-          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: "Progress"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center),
+            label: 'Workouts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.show_chart),
+            label: "Progress",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
@@ -99,10 +101,10 @@ class _HomePageState extends State<HomePage> {
 class HomeContentPage extends StatelessWidget {
   const HomeContentPage({super.key});
 
-  static const List<ExerciseData> todaysExercises = [
-    ExerciseData(name: 'Bench Press', sets: 4, reps: 5),
-    ExerciseData(name: 'Shoulder Press', sets: 4, reps: 10),
-    ExerciseData(name: 'Triceps', sets: 4, reps: 10),
+  static final List<ExerciseData> todaysExercises = [
+    ExerciseData(exercise: predefinedExercises[0], sets: 4, reps: 5),
+    ExerciseData(exercise: predefinedExercises[3], sets: 4, reps: 10),
+    ExerciseData(exercise: predefinedExercises[7], sets: 4, reps: 10),
   ];
 
   static String getWorkoutSummary() {
@@ -178,14 +180,18 @@ class HomeContentPage extends StatelessWidget {
                       child: Workout(
                         name: "Tomorrow's Workout",
                         exercises: [
-                          ExerciseData(name: 'Biceps', sets: 4, reps: 10),
-                          ExerciseData(name: 'Triceps', sets: 4, reps: 10),
+                          ExerciseData(
+                            exercise: predefinedExercises[6],
+                            sets: 4,
+                            reps: 10,
+                          ),
+                          ExerciseData(
+                            exercise: predefinedExercises[7],
+                            sets: 4,
+                            reps: 10,
+                          ),
                         ],
-                        tags: [
-                          EnduranceTag(),
-                          UpperBodyTag(),
-                          StrengthTag(),
-                        ],
+                        tags: [EnduranceTag(), UpperBodyTag(), StrengthTag()],
                       ),
                     ),
                   ],
@@ -214,15 +220,23 @@ class HomeContentPage extends StatelessWidget {
                       child: Workout(
                         name: "Marta's Workout",
                         exercises: [
-                          ExerciseData(name: 'Biceps', sets: 4, reps: 12),
-                          ExerciseData(name: 'Press', sets: 3, reps: 20),
-                          ExerciseData(name: 'Dumbbells', sets: 4, reps: 10),
+                          ExerciseData(
+                            exercise: predefinedExercises[6],
+                            sets: 4,
+                            reps: 12,
+                          ),
+                          ExerciseData(
+                            exercise: predefinedExercises[3],
+                            sets: 3,
+                            reps: 20,
+                          ),
+                          ExerciseData(
+                            exercise: predefinedExercises[5],
+                            sets: 4,
+                            reps: 10,
+                          ),
                         ],
-                        tags: [
-                          UpperBodyTag(),
-                          StrengthTag(),
-                          LowerBodyTag(),
-                        ],
+                        tags: [UpperBodyTag(), StrengthTag(), LowerBodyTag()],
                       ),
                     ),
                   ],
