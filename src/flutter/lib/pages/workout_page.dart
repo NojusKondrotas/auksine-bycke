@@ -314,7 +314,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   void dispose() {
     timer?.cancel();
     _commentController.dispose();
-    _workoutNameController.dispose(); // ✅ Dispose controller
+    _workoutNameController.dispose(); // Dispose controller
     super.dispose();
   }
 
@@ -423,7 +423,22 @@ class Exercise {
 class WorkoutSet {
   int reps;
   double weight;
-  WorkoutSet({required this.reps, required this.weight});
+
+  late TextEditingController repsController;
+  late TextEditingController weightController;
+
+  WorkoutSet({
+    required this.reps,
+    required this.weight,
+  }) {
+    repsController = TextEditingController(text: reps.toString());
+    weightController = TextEditingController(text: weight.toString());
+  }
+
+  void dispose() {
+    repsController.dispose();
+    weightController.dispose();
+  }
 }
 
 class ExerciseCard extends StatefulWidget {
@@ -441,9 +456,29 @@ class ExerciseCard extends StatefulWidget {
 }
 
 class _ExerciseCardState extends State<ExerciseCard> {
+
+  @override
+  void dispose() {
+    // išvalom controllerius kai widget sunaikinamas
+    for (var s in widget.exercise.sets) {
+      s.dispose();
+    }
+    super.dispose();
+  }
+
   void addSet() {
     setState(() {
-      widget.exercise.sets.add(WorkoutSet(reps: 0, weight: 0));
+      widget.exercise.sets.add(
+        WorkoutSet(reps: 0, weight: 0),
+      );
+      widget.onChanged(widget.exercise);
+    });
+  }
+
+  void removeSet(int index) {
+    setState(() {
+      widget.exercise.sets[index].dispose();
+      widget.exercise.sets.removeAt(index);
       widget.onChanged(widget.exercise);
     });
   }
@@ -472,6 +507,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
                         builder: (_) => const ExerciseBrowserPage(),
                       ),
                     );
+
                     if (result != null) {
                       setState(() {
                         widget.exercise.exercise = result;
@@ -484,6 +520,8 @@ class _ExerciseCardState extends State<ExerciseCard> {
                 ),
               ],
             ),
+
+            // SETAI
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -491,34 +529,44 @@ class _ExerciseCardState extends State<ExerciseCard> {
               itemBuilder: (context, index) {
                 final s = widget.exercise.sets[index];
 
-                // Use controllers per field
-                final repsController = TextEditingController(text: s.reps.toString());
-                final weightController = TextEditingController(text: s.weight.toString());
-
                 return Row(
                   children: [
                     Expanded(
                       child: TextField(
                         keyboardType: TextInputType.number,
+                        controller: s.repsController,
                         decoration: const InputDecoration(labelText: "Reps"),
-                        controller: repsController,
-                        onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
+                        onChanged: (val) {
+                          s.reps = int.tryParse(val) ?? 0;
+                        },
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
                         keyboardType: TextInputType.number,
+                        controller: s.weightController,
                         decoration: const InputDecoration(labelText: "Weight"),
-                        controller: weightController,
-                        onChanged: (val) => s.weight = double.tryParse(val) ?? 0,
+                        onChanged: (val) {
+                          s.weight = double.tryParse(val) ?? 0;
+                        },
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => removeSet(index),
                     ),
                   ],
                 );
               },
             ),
-            TextButton(onPressed: addSet, child: const Text("Add Set")),
+
+            const SizedBox(height: 8),
+
+            TextButton(
+              onPressed: addSet,
+              child: const Text("Add Set"),
+            ),
           ],
         ),
       ),
