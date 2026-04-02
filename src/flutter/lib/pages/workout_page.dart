@@ -3,6 +3,7 @@ import 'package:auksine_bycke/utils/exercise_info.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
+import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'dart:async';
 
 class WorkoutPage extends StatefulWidget {
@@ -17,10 +18,14 @@ class _WorkoutPageState extends State<WorkoutPage> {
   int seconds = 0;
   Timer? timer;
   bool workoutStarted = false;
+  bool isRoutineMode = false;
+
   List<Exercise> exercises = [];
 
   int _selectedRating = 0;
   final TextEditingController _commentController = TextEditingController();
+  final TextEditingController _workoutNameController =
+  TextEditingController(); // ✅ Added controller
 
   void startTimer() {
     timer?.cancel();
@@ -46,6 +51,107 @@ class _WorkoutPageState extends State<WorkoutPage> {
     final s = (seconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
   }
+
+  // ================= ROUTINES =================
+
+  Future<List<WorkoutModel>> getRoutines() async {
+    final all = await DatabaseHelper.instance.getAllWorkouts();
+    return all.where((w) => w.name.startsWith('[ROUTINE]')).toList();
+  }
+
+  void startRoutine(WorkoutModel routine) async {
+    workoutName = routine.name.replaceFirst('[ROUTINE] ', '');
+    _workoutNameController.text = workoutName;
+
+    List<Exercise> routineExercises = [];
+
+    for (final exModel in routine.exercises) {
+      final info = getExerciseById(exModel.exerciseRefId);
+      routineExercises.add(
+        Exercise(
+          exercise: info,
+          sets: exModel.sets
+              .map((s) => WorkoutSet(reps: s.reps, weight: s.weight))
+              .toList(),
+        ),
+      );
+    }
+
+    setState(() {
+      exercises = routineExercises;
+      workoutStarted = true;
+      isRoutineMode = false;
+      seconds = 0;
+    });
+
+    setState(() {
+      exercises = routineExercises;
+      workoutStarted = true;
+      isRoutineMode = false;
+      seconds = 0;
+    });
+  }
+
+  void showRoutinePicker() async {
+    final routines = await getRoutines();
+
+    if (routines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No routines found')),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Select Routine'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: routines.length,
+              itemBuilder: (context, index) {
+                final r = routines[index];
+
+                return ListTile(
+                  title: Text(r.name.replaceFirst('[ROUTINE] ', '')),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: r.exercises.map((e) {
+                      final exerciseInfo = getExerciseById(e.exerciseRefId); // lookup from catalog
+                      final exerciseName = exerciseInfo?.name ?? 'Unknown Exercise';
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('• $exerciseName'), // now show name instead of ID
+                          ...e.sets.asMap().entries.map((entry) {
+                            final i = entry.key + 1;
+                            final s = entry.value;
+                            return Text('   Set $i: ${s.reps} reps × ${s.weight} kg');
+                          }),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    startRoutine(r);
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ================= SAVE =================
 
   Future<void> _showRatingDialog() async {
     return showDialog(
@@ -111,67 +217,104 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   void saveWorkout() async {
     if (workoutName.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Enter workout name:')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter workout name')),
+      );
       return;
     }
 
     if (exercises.any((e) => e.exercise == null)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select a predefined exercise for each card.'),
-        ),
+        const SnackBar(content: Text('Select all exercises')),
       );
       return;
     }
 
+    // ===== SAVE ROUTINE =====
+    if (isRoutineMode) {
+      final db = await DatabaseHelper.instance.database;
+
+      final routineId = await db.insert('workouts', {
+        'name': '[ROUTINE] $workoutName',
+        'duration': 0,
+        'date': DateTime.now().toIso8601String(),
+        'rating': 0,
+        'comment': '',
+      });
+
+      for (final ex in exercises) {
+        final exerciseId = await db.insert('exercises', {
+          'workout_id': routineId,
+          'exercise_ref_id': ex.exercise!.id,
+        });
+
+        for (final set in ex.sets) {
+          await db.insert('sets', {
+            'exercise_id': exerciseId,
+            'reps': set.reps,
+            'weight': set.weight,
+          });
+        }
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Routine saved!')),
+      );
+
+      setState(() {
+        workoutStarted = false;
+        exercises = [];
+        workoutName = '';
+        _workoutNameController.clear();
+      });
+
+      return;
+    }
+
+    // ===== NORMAL WORKOUT =====
     stopTimer();
     await _showRatingDialog();
 
-    try {
-      final workout = WorkoutModel(
-        name: workoutName,
-        duration: seconds,
-        date: DateTime.now(),
-        rating: _selectedRating,
-        comment: _commentController.text,
-        exercises: exercises
-            .map(
-              (e) => ExerciseModel(
-                exerciseRefId: e.exercise!.id,
-                sets: e.sets
-                    .map((s) => SetModel(reps: s.reps, weight: s.weight))
-                    .toList(),
-              ),
-            )
-            .toList(),
-      );
+    final workout = WorkoutModel(
+      name: workoutName,
+      duration: seconds,
+      date: DateTime.now(),
+      rating: _selectedRating,
+      comment: _commentController.text,
+      exercises: exercises
+          .map(
+            (e) => ExerciseModel(
+          exerciseRefId: e.exercise!.id,
+          sets: e.sets
+              .map((s) => SetModel(reps: s.reps, weight: s.weight))
+              .toList(),
+        ),
+      )
+          .toList(),
+    );
 
-      await DatabaseHelper.instance.saveWorkout(workout);
+    await DatabaseHelper.instance.saveWorkout(workout);
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Workout saved!')));
-        setState(() {
-          workoutStarted = false;
-          exercises = [];
-          seconds = 0;
-          workoutName = '';
-          _selectedRating = 0;
-          _commentController.clear();
-        });
-      }
-    } catch (e) {
-      debugPrint('KLAIDA: $e');
-    }
+    setState(() {
+      workoutStarted = false;
+      exercises = [];
+      seconds = 0;
+      workoutName = '';
+      _selectedRating = 0;
+      _commentController.clear();
+      _workoutNameController.clear();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Workout saved!')),
+    );
   }
 
   @override
   void dispose() {
     timer?.cancel();
     _commentController.dispose();
+    _workoutNameController.dispose(); // ✅ Dispose controller
     super.dispose();
   }
 
@@ -181,72 +324,92 @@ class _WorkoutPageState extends State<WorkoutPage> {
       appBar: AppBar(title: const Text("Workout")),
       body: workoutStarted
           ? Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _workoutNameController,
+              decoration: const InputDecoration(labelText: "Workout Name"),
+              onChanged: (val) => workoutName = val,
+            ),
+            const SizedBox(height: 16),
+
+            if (!isRoutineMode)
+              Text(
+                formattedTime,
+                style: const TextStyle(
+                    fontSize: 48, fontWeight: FontWeight.bold),
+              ),
+
+            const SizedBox(height: 8),
+
+            if (!isRoutineMode)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: "Workout Name",
-                    ),
-                    onChanged: (val) => workoutName = val,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    formattedTime,
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: startTimer,
-                        child: const Text("Start"),
-                      ),
-                      const SizedBox(width: 16),
-                      ElevatedButton(
-                        onPressed: stopTimer,
-                        child: const Text("Stop"),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: exercises.length,
-                      itemBuilder: (context, index) {
-                        return ExerciseCard(
-                          exercise: exercises[index],
-                          onChanged: (ex) =>
-                              setState(() => exercises[index] = ex),
-                        );
-                      },
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: addExercise,
-                    child: const Text("Add Exercise"),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: saveWorkout,
-                    child: const Text("Save Workout"),
-                  ),
+                  ElevatedButton(onPressed: startTimer, child: const Text("Start")),
+                  const SizedBox(width: 16),
+                  ElevatedButton(onPressed: stopTimer, child: const Text("Stop")),
                 ],
               ),
-            )
-          : Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() => workoutStarted = true);
-                  startTimer();
+
+            const SizedBox(height: 16),
+
+            Expanded(
+              child: ListView.builder(
+                itemCount: exercises.length,
+                itemBuilder: (context, index) {
+                  return ExerciseCard(
+                    exercise: exercises[index],
+                    onChanged: (ex) => setState(() => exercises[index] = ex),
+                  );
                 },
-                child: const Text("New Workout"),
               ),
             ),
+
+            ElevatedButton(onPressed: addExercise, child: const Text("Add Exercise")),
+
+            const SizedBox(height: 8),
+
+            ElevatedButton(
+              onPressed: saveWorkout,
+              child: Text(isRoutineMode ? "Save Routine" : "Save Workout"),
+            ),
+          ],
+        ),
+      )
+          : Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  workoutStarted = true;
+                  isRoutineMode = false;
+                });
+                startTimer();
+              },
+              child: const Text("New Workout"),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  workoutStarted = true;
+                  isRoutineMode = true;
+                });
+              },
+              child: const Text("Create Routine"),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: showRoutinePicker,
+              child: const Text("Start Routine"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -266,6 +429,7 @@ class WorkoutSet {
 class ExerciseCard extends StatefulWidget {
   final Exercise exercise;
   final ValueChanged<Exercise> onChanged;
+
   const ExerciseCard({
     super.key,
     required this.exercise,
@@ -326,12 +490,18 @@ class _ExerciseCardState extends State<ExerciseCard> {
               itemCount: widget.exercise.sets.length,
               itemBuilder: (context, index) {
                 final s = widget.exercise.sets[index];
+
+                // Use controllers per field
+                final repsController = TextEditingController(text: s.reps.toString());
+                final weightController = TextEditingController(text: s.weight.toString());
+
                 return Row(
                   children: [
                     Expanded(
                       child: TextField(
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(labelText: "Reps"),
+                        controller: repsController,
                         onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
                       ),
                     ),
@@ -340,8 +510,8 @@ class _ExerciseCardState extends State<ExerciseCard> {
                       child: TextField(
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(labelText: "Weight"),
-                        onChanged: (val) =>
-                            s.weight = double.tryParse(val) ?? 0,
+                        controller: weightController,
+                        onChanged: (val) => s.weight = double.tryParse(val) ?? 0,
                       ),
                     ),
                   ],

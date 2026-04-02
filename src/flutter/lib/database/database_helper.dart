@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
+import 'package:auksine_bycke/utils/exercise_info.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -26,8 +27,8 @@ class DatabaseHelper {
             name TEXT,
             duration INTEGER,
             date TEXT,
-            rating INTEGER,    -- NAUJAS STULPELIS
-            comment TEXT       -- NAUJAS STULPELIS
+            rating INTEGER,
+            comment TEXT
           )
         ''');
         await db.execute('''
@@ -63,6 +64,29 @@ class DatabaseHelper {
     );
   }
 
+  // ================= NEW METHOD =================
+  Future<ExerciseInfo?> getExerciseInfoById(String id) async {
+    final db = await database;
+    final rows = await db.query(
+      'exercises',
+      where: 'exercise_ref_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+
+    if (rows.isEmpty) return null;
+
+    final row = rows.first;
+    return ExerciseInfo(
+      id: id,
+      name: row['name'] as String? ?? 'Unknown Exercise',
+      shortDescription: '',
+      fullDescription: '',
+      mediaIds: [],
+    );
+  }
+
+  // ================= SAVE WORKOUT =================
   Future<void> saveWorkout(WorkoutModel workout) async {
     final db = await database;
 
@@ -80,7 +104,6 @@ class DatabaseHelper {
         final exerciseId = await txn.insert('exercises', {
           'workout_id': workoutId,
           'exercise_ref_id': exercise.exerciseRefId,
-          // Keep denormalized name for backward compatibility with old data views.
           'name': exerciseInfo?.name,
         });
 
@@ -95,11 +118,10 @@ class DatabaseHelper {
     });
   }
 
+  // ================= GET ALL WORKOUTS =================
   Future<List<WorkoutModel>> getAllWorkouts() async {
     final db = await database;
-
     final workoutRows = await db.query('workouts', orderBy: 'date DESC');
-
     final List<WorkoutModel> workouts = [];
 
     for (final row in workoutRows) {
@@ -125,12 +147,12 @@ class DatabaseHelper {
         final sets = setRows
             .map(
               (s) => SetModel(
-                id: s['id'] as int,
-                exerciseId: exerciseId,
-                reps: s['reps'] as int,
-                weight: (s['weight'] as num).toDouble(),
-              ),
-            )
+            id: s['id'] as int?,
+            exerciseId: exerciseId,
+            reps: s['reps'] as int,
+            weight: (s['weight'] as num).toDouble(),
+          ),
+        )
             .toList();
 
         exercises.add(
@@ -138,8 +160,7 @@ class DatabaseHelper {
             id: exerciseId,
             workoutId: workoutId,
             exerciseRefId:
-                (exRow['exercise_ref_id'] as String?) ??
-                (getExerciseByName((exRow['name'] as String?) ?? '')?.id ?? ''),
+            (exRow['exercise_ref_id'] as String?) ?? '',
             sets: sets,
           ),
         );
@@ -161,6 +182,7 @@ class DatabaseHelper {
     return workouts;
   }
 
+  // ================= HELPER METHODS FOR PROGRESS =================
   Future<List<String>> getExerciseReferenceIds() async {
     final db = await database;
     final rows = await db.rawQuery(
@@ -169,20 +191,18 @@ class DatabaseHelper {
     return rows.map((r) => r['exercise_ref_id'] as String).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getExerciseProgress(
-    String exerciseRefId,
-  ) async {
+  Future<List<Map<String, dynamic>>> getExerciseProgress(String exerciseRefId) async {
     final db = await database;
     return await db.rawQuery(
       '''
-     SELECT
+      SELECT
         w.date,
         w.name AS workout_name,
-        MAX(s.weight)          AS max_weight,
-        SUM(s.reps)            AS total_reps,
+        MAX(s.weight) AS max_weight,
+        SUM(s.reps) AS total_reps,
         SUM(s.reps * s.weight) AS volume
       FROM exercises e
-      JOIN sets s     ON s.exercise_id = e.id
+      JOIN sets s ON s.exercise_id = e.id
       JOIN workouts w ON w.id = e.workout_id
       WHERE e.exercise_ref_id = ?
       GROUP BY w.id
