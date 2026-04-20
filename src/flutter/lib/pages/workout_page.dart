@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'package:auksine_bycke/utils/exercise_catalog.dart';
+import 'package:auksine_bycke/pages/workout_summary_page.dart';
 import 'dart:async';
+
 
 class WorkoutPage extends StatefulWidget {
   const WorkoutPage({super.key});
@@ -292,21 +294,40 @@ class _WorkoutPageState extends State<WorkoutPage> {
       )
           .toList(),
     );
+     
+    // PR tikrinimas
+    final List<String> personalRecords = [];
+    for (final exercise in exercises) {
+      if (exercise.exercise == null) continue;
+      final prevMax = await DatabaseHelper.instance.getMaxWeightForExercise(exercise.exercise!.id);
+      final currentMax = exercise.sets.fold<double>(0, (max, s) => s.weight > max ? s.weight : max);
+      if (currentMax > prevMax) {
+        personalRecords.add('${exercise.exercise!.name}: ${currentMax.toStringAsFixed(1)} kg');
+      }
+    }
 
-    await DatabaseHelper.instance.saveWorkout(workout);
+    if (!context.mounted) return;
 
-    setState(() {
-      workoutStarted = false;
-      exercises = [];
-      seconds = 0;
-      workoutName = '';
-      _selectedRating = 0;
-      _commentController.clear();
-      _workoutNameController.clear();
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Workout saved!')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutSummaryPage(
+          workout: workout,
+          personalRecords: personalRecords,
+          onSave: () async {
+            await DatabaseHelper.instance.saveWorkout(workout);
+            setState(() {
+              workoutStarted = false;
+              exercises = [];
+              seconds = 0;
+              workoutName = '';
+              _selectedRating = 0;
+              _commentController.clear();
+              _workoutNameController.clear();
+            });
+          },
+        ),
+      ),
     );
   }
 

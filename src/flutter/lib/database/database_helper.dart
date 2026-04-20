@@ -211,4 +211,15 @@ class DatabaseHelper {
       [exerciseRefId],
     );
   }
+  Future<double> getMaxWeightForExercise(String exerciseRefId) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT MAX(s.weight) as max_weight
+      FROM sets s
+      JOIN exercises e ON s.exercise_id = e.id
+      WHERE e.exercise_ref_id = ?
+    ''', [exerciseRefId]);
+    if (result.isEmpty || result.first['max_weight'] == null) return 0;
+    return (result.first['max_weight'] as num).toDouble();
+  }
 }
