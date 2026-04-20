@@ -66,7 +66,7 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.all(16),
               child: ElevatedButton(
                 onPressed: () {
-                  navigateBottomBar(3);
+                  navigateBottomBar(1);
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
