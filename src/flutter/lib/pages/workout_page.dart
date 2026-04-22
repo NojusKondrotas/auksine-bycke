@@ -5,6 +5,7 @@ import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/pages/workout_summary_page.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 
 
@@ -21,13 +22,16 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Timer? timer;
   bool workoutStarted = false;
   bool isRoutineMode = false;
+  int restDuration = 90; // cia default value
+  int currentRestSeconds = 0;
+  Timer? restTimer;
 
   List<Exercise> exercises = [];
 
   int _selectedRating = 0;
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _workoutNameController =
-  TextEditingController(); // ✅ Added controller
+  TextEditingController();
 
   void startTimer() {
     timer?.cancel();
@@ -52,6 +56,81 @@ class _WorkoutPageState extends State<WorkoutPage> {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
     final s = (seconds % 60).toString().padLeft(2, '0');
     return '$m:$s';
+  }
+
+  // ================ REST TIMER ================
+
+  void startRestTimer() {
+    if (isRoutineMode) return;
+
+    restTimer?.cancel();
+    setState(() => currentRestSeconds = restDuration);
+
+    restTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (currentRestSeconds > 0) {
+        setState(() => currentRestSeconds--);
+      } else {
+        t.cancel();
+        _handleRestOver();
+      }
+    });
+  }
+
+  void _handleRestOver() {
+    HapticFeedback.vibrate();
+    debugPrint("brrrrr brrr brrrrrrrr");
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Rest over, start your set."),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showTimerConfig() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Set Rest Duration"),
+          content: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "${restDuration} seconds",
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Slider(
+                    value: restDuration.toDouble(),
+                    min: 30,
+                    max: 300,
+                    divisions: 9,
+                    label: "${restDuration}s",
+                    onChanged: (double value) {
+                      setDialogState(() => restDuration = value.toInt());
+                      setState(() => restDuration = value.toInt());
+                    },
+                  ),
+                  const Text("Adjust rest time between sets (30s - 5m)"),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // ================= ROUTINES =================
@@ -342,95 +421,165 @@ class _WorkoutPageState extends State<WorkoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Workout")),
-      body: workoutStarted
-          ? Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _workoutNameController,
-              decoration: const InputDecoration(labelText: "Workout Name"),
-              onChanged: (val) => workoutName = val,
-            ),
-            const SizedBox(height: 16),
-
-            if (!isRoutineMode)
-              Text(
-                formattedTime,
-                style: const TextStyle(
-                    fontSize: 48, fontWeight: FontWeight.bold),
+      appBar: AppBar(
+        title: const Text("Workout"),
+        actions: [
+          if (workoutStarted && !isRoutineMode)
+            Padding(
+              padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+              child: ActionChip(
+                avatar: const Icon(
+                  Icons.timer_outlined,
+                  size: 18,
+                  color: Colors.blue,
+                ),
+                label: Text("Rest: ${restDuration}s"),
+                onPressed: _showTimerConfig,
+                backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
+            ),
+        ],
+      ),
+      body: workoutStarted
+          ? Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _workoutNameController,
+                        decoration: const InputDecoration(labelText: "Workout Name"),
+                        onChanged: (val) => workoutName = val,
+                      ),
+                      const SizedBox(height: 16),
+                      if (!isRoutineMode)
+                        Text(
+                          formattedTime,
+                          style: const TextStyle(
+                              fontSize: 48, fontWeight: FontWeight.bold),
+                        ),
+                      const SizedBox(height: 8),
+                      if (!isRoutineMode)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                                onPressed: startTimer, child: const Text("Start")),
+                            const SizedBox(width: 16),
+                            ElevatedButton(
+                                onPressed: stopTimer, child: const Text("Stop")),
+                          ],
+                        ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: exercises.length,
+                          itemBuilder: (context, index) {
+                            return ExerciseCard(
+                              exercise: exercises[index],
+                              onChanged: (ex) =>
+                                  setState(() => exercises[index] = ex),
+                              onSetCompleted: startRestTimer,
+                            );
+                          },
+                        ),
+                      ),
+                      ElevatedButton(
+                          onPressed: addExercise,
+                          child: const Text("Add Exercise")),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: saveWorkout,
+                        child: Text(isRoutineMode ? "Save Routine" : "Save Workout"),
+                      ),
+                      if (currentRestSeconds > 0) const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
 
-            const SizedBox(height: 8),
-
-            if (!isRoutineMode)
-              Row(
+                if (currentRestSeconds > 0)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      color: Colors.blueAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      child: SafeArea(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.timer, color: Colors.white),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Resting: ${currentRestSeconds}s",
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                TextButton(
+                                  onPressed: () => setState(() => currentRestSeconds += 30),
+                                  child: const Text("+30s", style: TextStyle(color: Colors.white)),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.skip_next, color: Colors.white),
+                                  onPressed: () {
+                                    restTimer?.cancel();
+                                    setState(() => currentRestSeconds = 0);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            )
+          : Center(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton(onPressed: startTimer, child: const Text("Start")),
-                  const SizedBox(width: 16),
-                  ElevatedButton(onPressed: stopTimer, child: const Text("Stop")),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        workoutStarted = true;
+                        isRoutineMode = false;
+                      });
+                      startTimer();
+                    },
+                    child: const Text("New Workout"),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        workoutStarted = true;
+                        isRoutineMode = true;
+                      });
+                    },
+                    child: const Text("Create Routine"),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: showRoutinePicker,
+                    child: const Text("Start Routine"),
+                  ),
                 ],
               ),
-
-            const SizedBox(height: 16),
-
-            Expanded(
-              child: ListView.builder(
-                itemCount: exercises.length,
-                itemBuilder: (context, index) {
-                  return ExerciseCard(
-                    exercise: exercises[index],
-                    onChanged: (ex) => setState(() => exercises[index] = ex),
-                  );
-                },
-              ),
             ),
-
-            ElevatedButton(onPressed: addExercise, child: const Text("Add Exercise")),
-
-            const SizedBox(height: 8),
-
-            ElevatedButton(
-              onPressed: saveWorkout,
-              child: Text(isRoutineMode ? "Save Routine" : "Save Workout"),
-            ),
-          ],
-        ),
-      )
-          : Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  workoutStarted = true;
-                  isRoutineMode = false;
-                });
-                startTimer();
-              },
-              child: const Text("New Workout"),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  workoutStarted = true;
-                  isRoutineMode = true;
-                });
-              },
-              child: const Text("Create Routine"),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: showRoutinePicker,
-              child: const Text("Start Routine"),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -444,6 +593,7 @@ class Exercise {
 class WorkoutSet {
   int reps;
   double weight;
+  bool isCompleted = false;
 
   late TextEditingController repsController;
   late TextEditingController weightController;
@@ -465,11 +615,13 @@ class WorkoutSet {
 class ExerciseCard extends StatefulWidget {
   final Exercise exercise;
   final ValueChanged<Exercise> onChanged;
+  final VoidCallback onSetCompleted;
 
   const ExerciseCard({
     super.key,
     required this.exercise,
     required this.onChanged,
+    required this.onSetCompleted,
   });
 
   @override
@@ -493,6 +645,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
         WorkoutSet(reps: 0, weight: 0),
       );
       widget.onChanged(widget.exercise);
+      widget.onSetCompleted();
     });
   }
 
@@ -549,7 +702,6 @@ class _ExerciseCardState extends State<ExerciseCard> {
               itemCount: widget.exercise.sets.length,
               itemBuilder: (context, index) {
                 final s = widget.exercise.sets[index];
-
                 return Row(
                   children: [
                     Expanded(
@@ -557,9 +709,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
                         keyboardType: TextInputType.number,
                         controller: s.repsController,
                         decoration: const InputDecoration(labelText: "Reps"),
-                        onChanged: (val) {
-                          s.reps = int.tryParse(val) ?? 0;
-                        },
+                        onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -568,9 +718,8 @@ class _ExerciseCardState extends State<ExerciseCard> {
                         keyboardType: TextInputType.number,
                         controller: s.weightController,
                         decoration: const InputDecoration(labelText: "Weight"),
-                        onChanged: (val) {
-                          s.weight = double.tryParse(val) ?? 0;
-                        },
+                        onChanged: (val) =>
+                            s.weight = double.tryParse(val) ?? 0,
                       ),
                     ),
                     IconButton(
