@@ -35,7 +35,7 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
               children: [
                 ListTile(
                   title: Text(exercise.name),
-                  subtitle: Text(exercise.shortDescription),
+                  subtitle: Text('Muscles: ${exercise.bodyParts.join(', ')}\nBody parts: ${exercise.muscles.join(', ')}',),
                   trailing: Icon(
                     isExpanded
                         ? Icons.keyboard_arrow_up
@@ -70,7 +70,29 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(exercise.fullDescription),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: exercise.instructions.asMap().entries.map((entry) {
+                                  final stepNumber = entry.key + 1;
+                                  final instruction = entry.value;
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0), // Space between steps
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '$stepNumber. ',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        Expanded(
+                                          child: Text(instruction),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                               const SizedBox(height: 16),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,

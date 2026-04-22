@@ -104,7 +104,7 @@ class HomeContentPage extends StatelessWidget {
   static final List<ExerciseData> todaysExercises = [
     ExerciseData(exercise: predefinedExercises[0], sets: 4, reps: 5),
     ExerciseData(exercise: predefinedExercises[3], sets: 4, reps: 10),
-    ExerciseData(exercise: predefinedExercises[7], sets: 4, reps: 10),
+    ExerciseData(exercise: predefinedExercises[5], sets: 4, reps: 10),
   ];
 
   static String getWorkoutSummary() {
@@ -181,12 +181,12 @@ class HomeContentPage extends StatelessWidget {
                         name: "Tomorrow's Workout",
                         exercises: [
                           ExerciseData(
-                            exercise: predefinedExercises[6],
+                            exercise: predefinedExercises[5],
                             sets: 4,
                             reps: 10,
                           ),
                           ExerciseData(
-                            exercise: predefinedExercises[7],
+                            exercise: predefinedExercises[3],
                             sets: 4,
                             reps: 10,
                           ),
@@ -221,7 +221,7 @@ class HomeContentPage extends StatelessWidget {
                         name: "Marta's Workout",
                         exercises: [
                           ExerciseData(
-                            exercise: predefinedExercises[6],
+                            exercise: predefinedExercises[2],
                             sets: 4,
                             reps: 12,
                           ),
@@ -231,7 +231,7 @@ class HomeContentPage extends StatelessWidget {
                             reps: 20,
                           ),
                           ExerciseData(
-                            exercise: predefinedExercises[5],
+                            exercise: predefinedExercises[0],
                             sets: 4,
                             reps: 10,
                           ),

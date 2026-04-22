@@ -80,8 +80,9 @@ class DatabaseHelper {
     return ExerciseInfo(
       id: id,
       name: row['name'] as String? ?? 'Unknown Exercise',
-      shortDescription: '',
-      fullDescription: '',
+      muscles: [],
+      bodyParts: [],
+      instructions: [],
       mediaPaths: [],
     );
   }
