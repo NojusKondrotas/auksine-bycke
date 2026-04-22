@@ -72,36 +72,27 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
                             children: [
                               Text(exercise.fullDescription),
                               const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      height: 120,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black26,
-                                        borderRadius: BorderRadius.circular(8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: exercise.mediaPaths.map((path) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0), // Gap between GIFs
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.asset(
+                                        path,
+                                        width: double.infinity, // Stretches to fill available width
+                                        height: 200,            // Adjust height as you prefer
+                                        fit: BoxFit.cover,      // Ensures the GIF fills the 200h area
+                                        errorBuilder: (context, error, stackTrace) => Container(
+                                          height: 200,
+                                          color: Colors.black12,
+                                          child: const Icon(Icons.broken_image),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Container(
-                                      height: 120,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black26,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                                  );
+                                }).toList(),
                               ),
                               if (widget.selectable) ...[
                                 const SizedBox(height: 12),

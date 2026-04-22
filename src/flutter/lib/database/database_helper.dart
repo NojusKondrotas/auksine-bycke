@@ -82,7 +82,7 @@ class DatabaseHelper {
       name: row['name'] as String? ?? 'Unknown Exercise',
       shortDescription: '',
       fullDescription: '',
-      mediaIds: [],
+      mediaPaths: [],
     );
   }
 

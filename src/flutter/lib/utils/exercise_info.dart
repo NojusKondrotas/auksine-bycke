@@ -3,13 +3,13 @@ class ExerciseInfo {
   final String name;
   final String shortDescription;
   final String fullDescription;
-  final List<String> mediaIds;
+  final List<String> mediaPaths;
 
   const ExerciseInfo({
     required this.id,
     required this.name,
     required this.shortDescription,
     required this.fullDescription,
-    required this.mediaIds,
+    required this.mediaPaths,
   });
 }

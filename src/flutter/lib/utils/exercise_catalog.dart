@@ -3,11 +3,18 @@ import 'package:auksine_bycke/utils/exercise_info.dart';
 const List<ExerciseInfo> predefinedExercises = [
   ExerciseInfo(
     id: '1',
+    name: 'Half calf raise',
+    shortDescription: 'Horizontal push.',
+    fullDescription: 'A compound pressing movement performed supine on a bench. Primarily targets the pectoralis major, with secondary involvement of the anterior deltoid and triceps.',
+    mediaPaths: ["assets/exercises/720x720/2ORFMoR.gif"],
+  ),
+  ExerciseInfo(
+    id: '1',
     name: 'Bench Press',
     shortDescription: 'Horizontal push.',
     fullDescription:
         'A compound pressing movement performed supine on a bench. Primarily targets the pectoralis major, with secondary involvement of the anterior deltoid and triceps.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
   ExerciseInfo(
     id: '2',
@@ -15,7 +22,7 @@ const List<ExerciseInfo> predefinedExercises = [
     shortDescription: 'Bilateral leg drive.',
     fullDescription:
         'A foundational lower-body movement loaded through the axial skeleton. Recruits the quadriceps, glutes, and erector spinae through a full knee and hip flexion cycle.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
   ExerciseInfo(
     id: '3',
@@ -23,7 +30,7 @@ const List<ExerciseInfo> predefinedExercises = [
     shortDescription: 'Hip hinge pull.',
     fullDescription:
         'A posterior chain dominant lift initiating from a dead stop on the floor. Engages the hamstrings, glutes, spinal erectors, and upper back under maximal tension.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
   ExerciseInfo(
     id: '4',
@@ -31,7 +38,7 @@ const List<ExerciseInfo> predefinedExercises = [
     shortDescription: 'Vertical push.',
     fullDescription:
         'A standing barbell press performed in the vertical plane. Primarily loads the deltoids and triceps, demanding significant core and upper back stabilisation.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
   ExerciseInfo(
     id: '5',
@@ -39,7 +46,7 @@ const List<ExerciseInfo> predefinedExercises = [
     shortDescription: 'Vertical pull.',
     fullDescription:
         'A bodyweight vertical pulling movement. Targets the latissimus dorsi and biceps brachii, with the grip width dictating emphasis across the back.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
   ExerciseInfo(
     id: '6',
@@ -47,7 +54,7 @@ const List<ExerciseInfo> predefinedExercises = [
     shortDescription: 'Horizontal pull.',
     fullDescription:
         'A bent-over rowing movement against horizontal resistance. Develops the mid and upper back, with significant isometric demand on the lower back.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
   ExerciseInfo(
     id: '7',
@@ -55,7 +62,7 @@ const List<ExerciseInfo> predefinedExercises = [
     shortDescription: 'Elbow flexion.',
     fullDescription:
         'An isolation movement targeting the biceps brachii through a full range of elbow flexion. Dumbbells allow independent arm tracking and supination throughout the curl.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
   ExerciseInfo(
     id: '8',
@@ -63,7 +70,7 @@ const List<ExerciseInfo> predefinedExercises = [
     shortDescription: 'Elbow extension.',
     fullDescription:
         'A cable-based isolation exercise for the triceps brachii. The fixed upper arm position eliminates shoulder involvement, placing the entire load through elbow extension.',
-    mediaIds: [],
+    mediaPaths: [],
   ),
 ];
 
