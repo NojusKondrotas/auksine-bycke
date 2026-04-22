@@ -77,7 +77,7 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
                                   final instruction = entry.value;
 
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0), // Space between steps
+                                    padding: const EdgeInsets.only(bottom: 8.0),
                                     child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
@@ -98,14 +98,13 @@ class _ExerciseBrowserPageState extends State<ExerciseBrowserPage> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: exercise.mediaPaths.map((path) {
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0), // Gap between GIFs
+                                    padding: const EdgeInsets.only(bottom: 8.0),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
                                       child: Image.asset(
                                         path,
-                                        width: double.infinity, // Stretches to fill available width
-                                        height: 200,            // Adjust height as you prefer
-                                        fit: BoxFit.cover,      // Ensures the GIF fills the 200h area
+                                        width: double.infinity,
+                                        fit: BoxFit.contain,
                                         errorBuilder: (context, error, stackTrace) => Container(
                                           height: 200,
                                           color: Colors.black12,
