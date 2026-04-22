@@ -24,6 +24,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final _bicepsController = TextEditingController();
   String _gender = 'Male';
   bool _saved = false;
+  double _bmiResult = 0;
+  String _bmiCategory = "";
 
   @override
   void initState() {
@@ -43,6 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _bicepsController.text = prefs.getString('biceps') ?? '';
       _gender = validGenders.contains(savedGender) ? savedGender : 'Male';
     });
+    _calculateBMI();
   }
 
   Future<void> _saveProfile() async {
@@ -52,10 +55,34 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setString('age', _ageController.text);
     await prefs.setString('biceps', _bicepsController.text);
     await prefs.setString('gender', _gender);
+
+    _calculateBMI();
+    
     setState(() => _saved = true);
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Profile saved!')));
+  }
+
+  void _calculateBMI() {
+    final double? weight = double.tryParse(_weightController.text);
+    final double? height = double.tryParse(_heightController.text);
+
+    if (weight != null && height != null && height > 0) {
+      setState(() {
+        _bmiResult = weight / ((height / 100) * (height / 100));
+
+        if (_bmiResult < 18.5) {
+          _bmiCategory = "Underweight";
+        } else if (_bmiResult < 25) {
+          _bmiCategory = "Normal weight";
+        } else if (_bmiResult < 30) {
+          _bmiCategory = "Overweight";
+        } else {
+          _bmiCategory = "Obese";
+        }
+      });
+    }
   }
 
   @override
@@ -95,6 +122,50 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_bmiResult > 0)
+              Card(
+                color: Colors.blueAccent.withOpacity(0.1),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Colors.blueAccent),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.speed,
+                        size: 40,
+                        color: Colors.blueAccent,
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Your BMI: ${_bmiResult.toStringAsFixed(1)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Category: $_bmiCategory',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: widget.isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 20),
             const Text(
               'Body characteristics',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
