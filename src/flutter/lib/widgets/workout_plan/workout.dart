@@ -113,6 +113,7 @@ class _WorkoutState extends State<Workout> {
         ),
         SizedBox(height: 6,),
         Column(
+          mainAxisSize: MainAxisSize.min,
           children: _exercises.asMap().entries.map((entry) {
             return Padding(
               padding: EdgeInsets.only(bottom: entry.key < _exercises.length - 1 ? 10 : 0),
