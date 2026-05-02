@@ -1,3 +1,4 @@
+import 'package:auksine_bycke/utils/UnitSystem.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/services/notification_service.dart';
 
@@ -49,6 +50,16 @@ class _SettingsPageState extends State<SettingsPage> {
         onChanged: (bool value) {
           widget.onThemeChanged(value);
         },
+      ),
+    ),
+
+    ListTile(
+      leading: const Icon(Icons.straighten),
+      title: const Text('Unit System'),
+      subtitle: Text(UnitSystemScope.of(context).isMetric ? 'Metric' : 'Imperial'),
+      trailing: Switch(
+        value: UnitSystemScope.of(context).isMetric,
+        onChanged: (_) => UnitSystemScope.of(context).toggle(),
       ),
     ),
 

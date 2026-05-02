@@ -1,4 +1,5 @@
 import 'package:auksine_bycke/pages/exercises_browser_page.dart';
+import 'package:auksine_bycke/utils/UnitSystem.dart';
 import 'package:auksine_bycke/utils/exercise_info.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/database/database_helper.dart';
@@ -659,6 +660,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
 
   @override
   Widget build(BuildContext context) {
+    final units = UnitSystemScope.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
@@ -717,7 +719,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
                       child: TextField(
                         keyboardType: TextInputType.number,
                         controller: s.weightController,
-                        decoration: const InputDecoration(labelText: "Weight"),
+                        decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
                         onChanged: (val) =>
                             s.weight = double.tryParse(val) ?? 0,
                       ),

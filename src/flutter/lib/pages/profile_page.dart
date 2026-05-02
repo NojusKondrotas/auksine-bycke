@@ -1,3 +1,4 @@
+import 'package:auksine_bycke/utils/UnitSystem.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/pages/register_page.dart';
 import 'package:auksine_bycke/pages/settings_page.dart';
@@ -65,24 +66,28 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _calculateBMI() {
+    final units = UnitSystemScope.of(context);
     final double? weight = double.tryParse(_weightController.text);
     final double? height = double.tryParse(_heightController.text);
 
-    if (weight != null && height != null && height > 0) {
-      setState(() {
-        _bmiResult = weight / ((height / 100) * (height / 100));
+    if (weight == null || height == null || height <= 0) return;
 
-        if (_bmiResult < 18.5) {
-          _bmiCategory = "Underweight";
-        } else if (_bmiResult < 25) {
-          _bmiCategory = "Normal weight";
-        } else if (_bmiResult < 30) {
-          _bmiCategory = "Overweight";
-        } else {
-          _bmiCategory = "Obese";
-        }
-      });
-    }
+    final double weight_amount = units.isMetric ? weight : weight / 2.20462;
+    final double height_amount = units.isMetric ? height : height * 2.54;
+
+    setState(() {
+      _bmiResult = weight / ((height / 100) * (height / 100));
+
+      if (_bmiResult < 18.5) {
+        _bmiCategory = "Underweight";
+      } else if (_bmiResult < 25) {
+        _bmiCategory = "Normal weight";
+      } else if (_bmiResult < 30) {
+        _bmiCategory = "Overweight";
+      } else {
+        _bmiCategory = "Obese";
+      }
+    });
   }
 
   @override
@@ -96,6 +101,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final units = UnitSystemScope.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
@@ -174,8 +181,8 @@ class _ProfilePageState extends State<ProfilePage> {
             TextField(
               controller: _weightController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Weight (kg)',
+              decoration: InputDecoration(
+                labelText: 'Weight (${units.weightLabel()})',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.monitor_weight),
               ),
@@ -184,8 +191,8 @@ class _ProfilePageState extends State<ProfilePage> {
             TextField(
               controller: _heightController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Height (cm)',
+              decoration: InputDecoration(
+                labelText: 'Height (${units.heightLabel()})',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.height),
               ),
@@ -204,8 +211,8 @@ class _ProfilePageState extends State<ProfilePage> {
             TextField(
               controller: _bicepsController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Bicep size (cm)',
+              decoration: InputDecoration(
+                labelText: 'Bicep size (${units.heightLabel()})',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.fitness_center),
               ),

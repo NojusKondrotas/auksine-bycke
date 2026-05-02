@@ -1,5 +1,6 @@
 import 'package:auksine_bycke/pages/home_page.dart';
 import 'package:auksine_bycke/services/notification_service.dart';
+import 'package:auksine_bycke/utils/UnitSystem.dart';
 import 'package:flutter/material.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -21,8 +22,13 @@ void main() async {
       );
     }
   };
-  
-  runApp(const MyApp());
+
+  runApp(
+    UnitSystemScope(
+      notifier: UnitSystemNotifier(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 int _getPageIndexFromPayload(String payload) {

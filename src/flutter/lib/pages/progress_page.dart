@@ -1,3 +1,4 @@
+import 'package:auksine_bycke/utils/UnitSystem.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -133,6 +134,7 @@ class _ProgressPageState extends State<ProgressPage>
         }
 
         final workouts = snapshot.data!;
+        final units = UnitSystemScope.of(context);
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
@@ -216,7 +218,7 @@ class _ProgressPageState extends State<ProgressPage>
                                 bottom: 2,
                               ),
                               child: Text(
-                                'Set $i: ${s.reps} reps × ${s.weight} kg',
+                                'Set $i: ${s.reps} reps × ${s.weight} ${units.weightLabel()}',
                                 style: theme.textTheme.bodySmall,
                               ),
                             );
@@ -237,6 +239,7 @@ class _ProgressPageState extends State<ProgressPage>
 
   //  STATS TAB
   Widget _buildStatsTab(ThemeData theme) {
+    final units = UnitSystemScope.of(context);
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -289,7 +292,7 @@ class _ProgressPageState extends State<ProgressPage>
                   // Max svoris grafkas
                   _buildChartCard(
                     theme: theme,
-                    title: 'Max Weight (kg)',
+                    title: 'Max Weight (${units.weightLabel()})',
                     spots: _spots('max_weight'),
                     color: theme.colorScheme.primary,
                   ),
@@ -299,7 +302,7 @@ class _ProgressPageState extends State<ProgressPage>
                   //Tūris grafkas
                   _buildChartCard(
                     theme: theme,
-                    title: 'Volume (kg × reps)',
+                    title: 'Volume (${units.weightLabel()} × reps)',
                     spots: _spots('volume'),
                     color: Colors.orange,
                   ),
@@ -327,6 +330,8 @@ class _ProgressPageState extends State<ProgressPage>
 
     final sessions = _progressData.length;
 
+    final units = UnitSystemScope.of(context);
+
     return Row(
       children: [
         _summaryCard(theme, 'Sessions', '$sessions', Icons.event_repeat),
@@ -334,14 +339,14 @@ class _ProgressPageState extends State<ProgressPage>
         _summaryCard(
           theme,
           'Max Weight',
-          '${maxWeight.toStringAsFixed(1)} kg',
+          '${maxWeight.toStringAsFixed(1)} ${units.weightLabel()}',
           Icons.emoji_events,
         ),
         const SizedBox(width: 8),
         _summaryCard(
           theme,
           'Total Volume',
-          '${totalVolume.toStringAsFixed(0)} kg',
+          '${totalVolume.toStringAsFixed(0)} ${units.weightLabel()}',
           Icons.bar_chart,
         ),
       ],
@@ -481,6 +486,7 @@ class _ProgressPageState extends State<ProgressPage>
 
   // Workout history
   Widget _buildSessionList(ThemeData theme) {
+    final units = UnitSystemScope.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -504,7 +510,7 @@ class _ProgressPageState extends State<ProgressPage>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${row['max_weight']} kg',
+                      '${row['max_weight']} ${units.weightLabel()}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
