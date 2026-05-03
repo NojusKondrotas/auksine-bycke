@@ -37,8 +37,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   DateTime _normalise(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  WorkoutModel? _workoutFor(DateTime day) =>
-      _workoutByDay[_normalise(day)];
+  WorkoutModel? _workoutFor(DateTime day) => _workoutByDay[_normalise(day)];
 
   bool _hasWorkout(DateTime day) => _workoutFor(day) != null;
 
@@ -62,7 +61,6 @@ class _CalendarPageState extends State<CalendarPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Row(
               children: [
                 Container(
@@ -79,17 +77,13 @@ class _CalendarPageState extends State<CalendarPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        workout.name,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                      Text(workout.name,
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 2),
-                      Text(
-                        _formatDate(workout.date),
-                        style: TextStyle(
-                            color: Colors.grey.shade500, fontSize: 13),
-                      ),
+                      Text(_formatDate(workout.date),
+                          style: TextStyle(
+                              color: Colors.grey.shade500, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -104,32 +98,24 @@ class _CalendarPageState extends State<CalendarPage> {
               ],
             ),
             const SizedBox(height: 20),
-
-            // Stats
             _InfoRow(
-              icon: Icons.bar_chart,
-              label: 'Exercises',
-              value: '${workout.exercises.length}',
-            ),
+                icon: Icons.bar_chart,
+                label: 'Exercises',
+                value: '${workout.exercises.length}'),
             _InfoRow(
-              icon: Icons.timer_outlined,
-              label: 'Duration',
-              value: _formatDuration(workout.duration),
-            ),
+                icon: Icons.timer_outlined,
+                label: 'Duration',
+                value: _formatDuration(workout.duration)),
             _InfoRow(
-              icon: Icons.fitness_center,
-              label: 'Total volume',
-              value: '${_totalVolume(workout).toStringAsFixed(1)} kg',
-            ),
+                icon: Icons.fitness_center,
+                label: 'Total volume',
+                value: '${_totalVolume(workout).toStringAsFixed(1)} kg'),
             if (workout.comment.isNotEmpty)
               _InfoRow(
                   icon: Icons.notes,
                   label: 'Note',
                   value: workout.comment),
-
             const SizedBox(height: 24),
-
-            // Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -181,12 +167,26 @@ class _CalendarPageState extends State<CalendarPage> {
     return '$m:$s';
   }
 
+  int _workoutsThisMonth() => _workoutByDay.keys
+      .where((d) =>
+          d.year == _focusedDay.year && d.month == _focusedDay.month)
+      .length;
+
+  // ── Build ────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
           body: Center(child: CircularProgressIndicator()));
     }
+
+    final daysInMonth =
+        DateTime(_focusedDay.year, _focusedDay.month + 1, 0).day;
+    final trainedCount = _workoutsThisMonth();
+    final percent = trainedCount == 0
+        ? 0
+        : (trainedCount / daysInMonth * 100).round();
 
     return Scaffold(
       appBar: AppBar(
@@ -195,72 +195,129 @@ class _CalendarPageState extends State<CalendarPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: TableCalendar(
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.now(),
-              focusedDay: _focusedDay,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: _onDaySelected,
-              onPageChanged: (focusedDay) =>
-                  setState(() => _focusedDay = focusedDay),
-              calendarFormat: CalendarFormat.month,
-              availableCalendarFormats: const {
-                CalendarFormat.month: 'Month',
-              },
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-                titleTextStyle: TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              calendarStyle: CalendarStyle(
-                todayDecoration: BoxDecoration(
-                  color: const Color(0xFFFFD700).withOpacity(0.4),
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: const BoxDecoration(
-                    color: Color(0xFFFFD700), shape: BoxShape.circle),
-                selectedTextStyle: const TextStyle(
-                    color: Colors.black, fontWeight: FontWeight.bold),
-                outsideDaysVisible: false,
-              ),
-              calendarBuilders: CalendarBuilders(
-                defaultBuilder: (context, day, _) {
-                  if (_hasWorkout(day)) {
-                    return Container(
-                      margin: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                          color: Color(0xFFFFD700), shape: BoxShape.circle),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${day.day}',
-                        style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // ── Calendar ─────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: TableCalendar(
+                    firstDay: DateTime.utc(2020, 1, 1),
+                    lastDay: DateTime.now(),
+                    focusedDay: _focusedDay,
+                    selectedDayPredicate: (day) =>
+                        isSameDay(_selectedDay, day),
+                    onDaySelected: _onDaySelected,
+                    onPageChanged: (focusedDay) =>
+                        setState(() => _focusedDay = focusedDay),
+                    calendarFormat: CalendarFormat.month,
+                    availableCalendarFormats: const {
+                      CalendarFormat.month: 'Month',
+                    },
+                    headerStyle: const HeaderStyle(
+                      formatButtonVisible: false,
+                      titleCentered: true,
+                      titleTextStyle: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    calendarStyle: CalendarStyle(
+                      todayDecoration: BoxDecoration(
+                        color: const Color(0xFFFFD700).withOpacity(0.4),
+                        shape: BoxShape.circle,
                       ),
-                    );
-                  }
-                  return null;
-                },
+                      selectedDecoration: const BoxDecoration(
+                          color: Color(0xFFFFD700), shape: BoxShape.circle),
+                      selectedTextStyle: const TextStyle(
+                          color: Colors.black, fontWeight: FontWeight.bold),
+                      outsideDaysVisible: false,
+                    ),
+                    calendarBuilders: CalendarBuilders(
+                      defaultBuilder: (context, day, _) {
+                        if (_hasWorkout(day)) {
+                          return Container(
+                            margin: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                                color: Color(0xFFFFD700),
+                                shape: BoxShape.circle),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${day.day}',
+                              style: const TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
+                            ),
+                          );
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+
+            const SizedBox(height: 16),
+
+            // ── Monthly summary ───────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_month,
+                          color: Color(0xFFFFD700), size: 32),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'This month',
+                            style: TextStyle(
+                                color: Colors.grey.shade500, fontSize: 13),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$trainedCount / $daysInMonth days trained',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$percent%',
+                        style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFFFD700)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Widgets ───────────────────────────────────────────────────────────────────
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
