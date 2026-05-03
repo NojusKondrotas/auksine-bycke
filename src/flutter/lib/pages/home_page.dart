@@ -1,3 +1,4 @@
+import 'package:auksine_bycke/pages/calendar_page.dart';
 import 'package:auksine_bycke/pages/profile_page.dart';
 import 'package:auksine_bycke/pages/progress_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
@@ -50,6 +51,7 @@ class _HomePageState extends State<HomePage> {
       const HomeContentPage(),
       WorkoutPage(),
       ProgressPage(),
+      const CalendarPage(),
       ProfilePage(
         onThemeChanged: widget.onThemeChanged,
         isDarkMode: widget.isDarkMode,
@@ -89,9 +91,16 @@ class _HomePageState extends State<HomePage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.show_chart),
-            label: "Progress",
+            label: 'Progress',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
       ),
     );
