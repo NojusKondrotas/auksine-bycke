@@ -357,14 +357,23 @@ class _WorkoutPageState extends State<WorkoutPage> {
     stopTimer();
     await _showRatingDialog();
 
-    // Detect personal records for each set
+    // Detect personal records for each set (only if exercise has history)
     for (final exercise in exercises) {
       if (exercise.exercise == null) continue;
-      for (final set in exercise.sets) {
-        set.isPRWeight = await DatabaseHelper.instance
-            .isWeightPR(exercise.exercise!.id, set.weight);
-        set.isPRReps = await DatabaseHelper.instance
-            .isRepsPR(exercise.exercise!.id, set.reps);
+      
+      // Check if this exercise has any previous history
+      final previousProgress = await DatabaseHelper.instance
+          .getExerciseProgress(exercise.exercise!.id);
+      final hasHistory = previousProgress.isNotEmpty;
+      
+      // Only detect PR if exercise has previous history
+      if (hasHistory) {
+        for (final set in exercise.sets) {
+          set.isPRWeight = await DatabaseHelper.instance
+              .isWeightPR(exercise.exercise!.id, set.weight);
+          set.isPRReps = await DatabaseHelper.instance
+              .isRepsPR(exercise.exercise!.id, set.reps);
+        }
       }
     }
 
@@ -695,9 +704,15 @@ class _ExerciseCardState extends State<ExerciseCard> {
 
     final exerciseId = widget.exercise.exercise!.id;
     
-    // Detect if this set is a PR
-    s.isPRWeight = await DatabaseHelper.instance.isWeightPR(exerciseId, s.weight);
-    s.isPRReps = await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
+    // Check if this exercise has any previous records
+    final previousProgress = await DatabaseHelper.instance.getExerciseProgress(exerciseId);
+    final hasHistory = previousProgress.isNotEmpty;
+    
+    // Only detect PR if exercise has previous history
+    if (hasHistory) {
+      s.isPRWeight = await DatabaseHelper.instance.isWeightPR(exerciseId, s.weight);
+      s.isPRReps = await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
+    }
 
     setState(() {
       s.isCompleted = !s.isCompleted;
