@@ -13,6 +13,7 @@ import 'package:auksine_bycke/utils/workout_tags/strength_tag.dart';
 import 'package:auksine_bycke/utils/workout_tags/upper_body_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
 import 'package:flutter/material.dart';
+import 'package:auksine_bycke/widgets/streak_widget.dart';
 
 class HomePage extends StatefulWidget {
   final Function(bool) onThemeChanged;
@@ -133,7 +134,7 @@ class HomeContentPage extends StatelessWidget {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-
+            const StreakWidget(),
             // ---------------- TODAY WORKOUT ----------------
             SizedBox(
               width: 500,

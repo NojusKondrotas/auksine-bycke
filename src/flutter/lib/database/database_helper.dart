@@ -223,4 +223,39 @@ class DatabaseHelper {
     if (result.isEmpty || result.first['max_weight'] == null) return 0;
     return (result.first['max_weight'] as num).toDouble();
   }
+
+  Future<int> getWorkoutStreak() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT date FROM workouts
+    ORDER BY date DESC
+  ''');
+
+    if (result.isEmpty) return 0;
+
+    final dates = result.map((row) {
+      final d = DateTime.parse(row['date'] as String);
+      return DateTime(d.year, d.month, d.day);
+    }).toSet().toList();
+
+    dates.sort((a, b) => b.compareTo(a));
+
+    int streak = 0;
+    DateTime today = DateTime.now();
+    DateTime currentDay = DateTime(today.year, today.month, today.day);
+
+    for (final date in dates) {
+      final diff = currentDay.difference(date).inDays;
+
+      if (diff == 0 || diff == 1) {
+        streak++;
+        currentDay = currentDay.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
 }
