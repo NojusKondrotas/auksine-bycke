@@ -3,7 +3,6 @@
 // Unit tests for WorkoutSet — the chosen class for in-depth coverage.
 // Demonstrates: setUp/tearDown, parametrized tests, stubs.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
 import 'package:auksine_bycke/utils/exercise_info.dart';

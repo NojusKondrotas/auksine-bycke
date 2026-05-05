@@ -357,6 +357,17 @@ class _WorkoutPageState extends State<WorkoutPage> {
     stopTimer();
     await _showRatingDialog();
 
+    // Detect personal records for each set
+    for (final exercise in exercises) {
+      if (exercise.exercise == null) continue;
+      for (final set in exercise.sets) {
+        set.isPRWeight = await DatabaseHelper.instance
+            .isWeightPR(exercise.exercise!.id, set.weight);
+        set.isPRReps = await DatabaseHelper.instance
+            .isRepsPR(exercise.exercise!.id, set.reps);
+      }
+    }
+
     final workout = WorkoutModel(
       name: workoutName,
       duration: seconds,
@@ -379,10 +390,17 @@ class _WorkoutPageState extends State<WorkoutPage> {
     final List<String> personalRecords = [];
     for (final exercise in exercises) {
       if (exercise.exercise == null) continue;
-      final prevMax = await DatabaseHelper.instance.getMaxWeightForExercise(exercise.exercise!.id);
-      final currentMax = exercise.sets.fold<double>(0, (max, s) => s.weight > max ? s.weight : max);
-      if (currentMax > prevMax) {
-        personalRecords.add('${exercise.exercise!.name}: ${currentMax.toStringAsFixed(1)} kg');
+      for (final set in exercise.sets) {
+        if (set.isPRWeight) {
+          personalRecords.add(
+            '${exercise.exercise!.name} - Weight: ${set.weight.toStringAsFixed(1)} kg',
+          );
+        }
+        if (set.isPRReps) {
+          personalRecords.add(
+            '${exercise.exercise!.name} - Reps: ${set.reps}',
+          );
+        }
       }
     }
 
@@ -396,6 +414,14 @@ class _WorkoutPageState extends State<WorkoutPage> {
           personalRecords: personalRecords,
           onSave: () async {
             await DatabaseHelper.instance.saveWorkout(workout);
+            // Update PRs in database
+            for (final exercise in exercises) {
+              if (exercise.exercise == null) continue;
+              await DatabaseHelper.instance
+                  .updatePRsForWorkout(exercise.exercise!.id, workout.exercises
+                  .firstWhere((e) => e.exerciseRefId == exercise.exercise!.id)
+                  .sets);
+            }
             setState(() {
               workoutStarted = false;
               exercises = [];
@@ -595,6 +621,8 @@ class WorkoutSet {
   int reps;
   double weight;
   bool isCompleted = false;
+  bool isPRWeight = false;
+  bool isPRReps = false;
 
   late TextEditingController repsController;
   late TextEditingController weightController;
@@ -602,6 +630,9 @@ class WorkoutSet {
   WorkoutSet({
     required this.reps,
     required this.weight,
+    this.isCompleted = false,
+    this.isPRWeight = false,
+    this.isPRReps = false,
   }) {
     repsController = TextEditingController(text: reps.toString());
     weightController = TextEditingController(text: weight.toString());
@@ -658,6 +689,26 @@ class _ExerciseCardState extends State<ExerciseCard> {
     });
   }
 
+  Future<void> _checkSetForPR(int index) async {
+    final s = widget.exercise.sets[index];
+    if (widget.exercise.exercise == null) return;
+
+    final exerciseId = widget.exercise.exercise!.id;
+    
+    // Detect if this set is a PR
+    s.isPRWeight = await DatabaseHelper.instance.isWeightPR(exerciseId, s.weight);
+    s.isPRReps = await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
+
+    setState(() {
+      s.isCompleted = !s.isCompleted;
+      widget.onChanged(widget.exercise);
+    });
+
+    if (s.isCompleted && (s.isPRWeight || s.isPRReps)) {
+      widget.onSetCompleted();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final units = UnitSystemScope.of(context);
@@ -704,30 +755,107 @@ class _ExerciseCardState extends State<ExerciseCard> {
               itemCount: widget.exercise.sets.length,
               itemBuilder: (context, index) {
                 final s = widget.exercise.sets[index];
-                return Row(
+                return Column(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        keyboardType: TextInputType.number,
-                        controller: s.repsController,
-                        decoration: const InputDecoration(labelText: "Reps"),
-                        onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: s.isCompleted,
+                          onChanged: (_) => _checkSetForPR(index),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            keyboardType: TextInputType.number,
+                            controller: s.repsController,
+                            decoration: const InputDecoration(labelText: "Reps"),
+                            onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
+                            enabled: !s.isCompleted,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            keyboardType: TextInputType.number,
+                            controller: s.weightController,
+                            decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
+                            onChanged: (val) =>
+                                s.weight = double.tryParse(val) ?? 0,
+                            enabled: !s.isCompleted,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () => removeSet(index),
+                        ),
+                      ],
+                    ),
+                    if (s.isCompleted && (s.isPRWeight || s.isPRReps))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            if (s.isPRWeight)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.star,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'PR Weight!',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(width: 12),
+                            if (s.isPRReps)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.deepOrange,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.trending_up,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'PR Reps!',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        keyboardType: TextInputType.number,
-                        controller: s.weightController,
-                        decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
-                        onChanged: (val) =>
-                            s.weight = double.tryParse(val) ?? 0,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => removeSet(index),
-                    ),
                   ],
                 );
               },

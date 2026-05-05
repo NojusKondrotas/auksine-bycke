@@ -24,6 +24,7 @@ class _ProgressPageState extends State<ProgressPage>
   String? _selectedExerciseRefId;
   List<Map<String, dynamic>> _progressData = [];
   bool _statsLoading = false;
+  List<Map<String, dynamic>> _personalRecords = [];
 
   @override
   void initState() {
@@ -85,11 +86,24 @@ class _ProgressPageState extends State<ProgressPage>
     final data = await DatabaseHelper.instance.getExerciseProgress(
       exerciseRefId,
     );
+    final prs = await _loadPersonalRecords(exerciseRefId);
     if (!mounted) return;
     setState(() {
       _progressData = data;
+      _personalRecords = prs;
       _statsLoading = false;
     });
+  }
+
+  Future<List<Map<String, dynamic>>> _loadPersonalRecords(
+    String exerciseRefId,
+  ) async {
+    final allPRs = await DatabaseHelper.instance.getAllPRs();
+    return allPRs
+        .where((pr) => pr['exercise_ref_id'] == exerciseRefId)
+        .toList()
+      ..sort((a, b) => DateTime.parse(b['date'] as String)
+          .compareTo(DateTime.parse(a['date'] as String)));
   }
 
   List<FlSpot> _spots(String key) {
@@ -289,6 +303,12 @@ class _ProgressPageState extends State<ProgressPage>
 
                   const SizedBox(height: 16),
 
+                  // Personal Records section
+                  if (_personalRecords.isNotEmpty)
+                    _buildPRSection(theme),
+
+                  const SizedBox(height: 16),
+
                   // Max svoris grafkas
                   _buildChartCard(
                     theme: theme,
@@ -478,6 +498,77 @@ class _ProgressPageState extends State<ProgressPage>
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Personal Records section
+  Widget _buildPRSection(ThemeData theme) {
+    final units = UnitSystemScope.of(context);
+    return Card(
+      color: theme.colorScheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.emoji_events,
+                  size: 24,
+                  color: Colors.amber,
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Personal Records',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ..._personalRecords.take(5).map((pr) {
+              final date = DateTime.parse(pr['date'] as String);
+              final weight = (pr['weight'] as num?)?.toDouble() ?? 0;
+              final reps = (pr['reps'] as num?)?.toInt() ?? 0;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$weight ${units.weightLabel()} × $reps reps',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('yyyy-MM-dd').format(date),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Icon(
+                      Icons.star,
+                      color: Colors.amber,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              );
+            }),
           ],
         ),
       ),

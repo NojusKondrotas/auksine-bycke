@@ -19,7 +19,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'workouts.db');
     return openDatabase(
       path,
-      version: 4, // 🔴 pakeista
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE workouts (
@@ -50,7 +50,7 @@ class DatabaseHelper {
           )
         ''');
 
-        // 🔴 NAUJA LENTELE
+       
         await db.execute('''
           CREATE TABLE personal_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +72,7 @@ class DatabaseHelper {
           );
         }
 
-        // 🔴 PR TABLE upgrade
+
         if (oldVersion < 4) {
           await db.execute('''
             CREATE TABLE personal_records (
@@ -284,6 +284,39 @@ class DatabaseHelper {
     ''', [exerciseRefId]);
     if (result.isEmpty || result.first['max_weight'] == null) return 0;
     return (result.first['max_weight'] as num).toDouble();
+  }
+
+  Future<int> getMaxRepsForExercise(String exerciseRefId) async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT MAX(s.reps) as max_reps
+      FROM sets s
+      JOIN exercises e ON s.exercise_id = e.id
+      WHERE e.exercise_ref_id = ?
+    ''', [exerciseRefId]);
+    if (result.isEmpty || result.first['max_reps'] == null) return 0;
+    return (result.first['max_reps'] as int?) ?? 0;
+  }
+
+  Future<bool> isWeightPR(String exerciseRefId, double weight) async {
+    final maxWeight = await getMaxWeightForExercise(exerciseRefId);
+    return weight > maxWeight;
+  }
+
+  Future<bool> isRepsPR(String exerciseRefId, int reps) async {
+    final maxReps = await getMaxRepsForExercise(exerciseRefId);
+    return reps > maxReps;
+  }
+
+  Future<void> updatePRsForWorkout(String exerciseRefId, List<SetModel> sets) async {
+    for (final set in sets) {
+      final isWeightPR = await this.isWeightPR(exerciseRefId, set.weight);
+      final isRepsPR = await this.isRepsPR(exerciseRefId, set.reps);
+      
+      if (isWeightPR || isRepsPR) {
+        await insertPR(exerciseRefId, set.weight, set.reps);
+      }
+    }
   }
 
   Future<int> getWorkoutStreak() async {
