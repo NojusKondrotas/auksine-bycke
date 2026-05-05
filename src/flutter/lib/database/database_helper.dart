@@ -19,7 +19,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'workouts.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4, // 🔴 pakeista
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE workouts (
@@ -49,6 +49,17 @@ class DatabaseHelper {
             FOREIGN KEY (exercise_id) REFERENCES exercises(id)
           )
         ''');
+
+        // 🔴 NAUJA LENTELE
+        await db.execute('''
+          CREATE TABLE personal_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercise_ref_id TEXT,
+            weight REAL,
+            reps INTEGER,
+            date TEXT
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -59,6 +70,19 @@ class DatabaseHelper {
           await db.execute(
             'ALTER TABLE exercises ADD COLUMN exercise_ref_id TEXT',
           );
+        }
+
+        // 🔴 PR TABLE upgrade
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE personal_records (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              exercise_ref_id TEXT,
+              weight REAL,
+              reps INTEGER,
+              date TEXT
+            )
+          ''');
         }
       },
     );
@@ -183,7 +207,44 @@ class DatabaseHelper {
     return workouts;
   }
 
-  // ================= HELPER METHODS FOR PROGRESS =================
+  // ================= PR METHODS =================
+
+  Future<double> getMaxPRWeight(String exerciseRefId) async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+      SELECT MAX(weight) as max_weight
+      FROM personal_records
+      WHERE exercise_ref_id = ?
+    ''', [exerciseRefId]);
+
+    if (result.isEmpty || result.first['max_weight'] == null) return 0;
+
+    return (result.first['max_weight'] as num).toDouble();
+  }
+
+  Future<void> insertPR(String exerciseRefId, double weight, int reps) async {
+    final db = await database;
+
+    await db.insert('personal_records', {
+      'exercise_ref_id': exerciseRefId,
+      'weight': weight,
+      'reps': reps,
+      'date': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getAllPRs() async {
+    final db = await database;
+
+    return await db.query(
+      'personal_records',
+      orderBy: 'date DESC',
+    );
+  }
+
+  // ================= HELPER METHODS =================
+
   Future<List<String>> getExerciseReferenceIds() async {
     final db = await database;
     final rows = await db.rawQuery(
@@ -212,6 +273,7 @@ class DatabaseHelper {
       [exerciseRefId],
     );
   }
+
   Future<double> getMaxWeightForExercise(String exerciseRefId) async {
     final db = await database;
     final result = await db.rawQuery('''
