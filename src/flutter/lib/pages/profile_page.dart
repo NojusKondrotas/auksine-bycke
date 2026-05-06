@@ -1,6 +1,5 @@
 import 'package:auksine_bycke/utils/UnitSystem.dart';
 import 'package:flutter/material.dart';
-import 'package:auksine_bycke/pages/register_page.dart';
 import 'package:auksine_bycke/pages/settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -151,7 +150,7 @@ class _ProfilePageState extends State<ProfilePage> {
     await prefs.setString('gender', _gender);
 
     _calculateBMI();
-    
+
     setState(() => _saved = true);
     ScaffoldMessenger.of(
       context,
@@ -390,28 +389,12 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 24),
             const Divider(),
             const SizedBox(height: 12),
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RegisterPage(),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Register Now'),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
+
   Widget _buildWeightChart(BuildContext context) {
     final theme = Theme.of(context);
     final units = UnitSystemScope.of(context);
