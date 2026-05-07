@@ -6,12 +6,134 @@ import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/utils/exercise_info.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
+import 'package:auksine_bycke/database/achievement_db.dart';
+
 
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
 
   @override
   State<ProgressPage> createState() => _ProgressPageState();
+}
+
+class AchievementsGrid extends StatefulWidget {
+  const AchievementsGrid({Key? key}) : super(key: key);
+
+  @override
+  State<AchievementsGrid> createState() => _AchievementsGridState();
+}
+
+class _AchievementsGridState extends State<AchievementsGrid> {
+  List<Achievement> _achievements = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAchievements();
+  }
+
+  Future<void> _loadAchievements() async {
+    final badges = await AchievementDatabase.instance.getAllAchievements();
+    setState(() {
+      _achievements = badges;
+      _isLoading = false;
+    });
+  }
+
+  IconData _getIcon(String name) {
+    switch (name) {
+      case 'fitness_center':
+        return Icons.fitness_center;
+      case 'repeat':
+        return Icons.repeat;
+      default:
+        return Icons.emoji_events;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: _achievements.length,
+      itemBuilder: (context, index) {
+        final badge = _achievements[index];
+        final isUnlocked = badge.isUnlocked;
+
+        return GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(badge.title),
+                content: Text(badge.description),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text("Close"),
+                  ),
+                ],
+              ),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isUnlocked
+                  ? Colors.blueAccent.withOpacity(0.1)
+                  : Colors.grey.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isUnlocked
+                    ? Colors.blueAccent
+                    : Colors.grey.withOpacity(0.2),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _getIcon(badge.iconName),
+                  size: 40,
+                  color: isUnlocked
+                      ? Colors.amber
+                      : Colors.grey.withOpacity(0.3),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  badge.title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: isUnlocked ? Colors.white : Colors.grey,
+                  ),
+                ),
+                if (isUnlocked && badge.unlockDate != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('MM/dd').format(badge.unlockDate!),
+                    style: const TextStyle(fontSize: 10, color: Colors.white70),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _ProgressPageState extends State<ProgressPage>
@@ -29,7 +151,7 @@ class _ProgressPageState extends State<ProgressPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _workoutsFuture = DatabaseHelper.instance.getAllWorkouts();
     _loadExerciseOptions();
   }
@@ -125,12 +247,20 @@ class _ProgressPageState extends State<ProgressPage>
           tabs: const [
             Tab(icon: Icon(Icons.history), text: 'History'),
             Tab(icon: Icon(Icons.show_chart), text: 'Statistics'),
+            Tab(
+              icon: Icon(Icons.emoji_events),
+              text: 'Achievements',
+            ),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildHistoryTab(theme), _buildStatsTab(theme)],
+        children: [
+          _buildHistoryTab(theme),
+          _buildStatsTab(theme),
+          const AchievementsGrid(),
+        ],
       ),
     );
   }

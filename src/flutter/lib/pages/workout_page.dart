@@ -7,6 +7,7 @@ import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/pages/workout_summary_page.dart';
 import 'package:flutter/services.dart';
+import 'package:auksine_bycke/services/achievement_service.dart';
 import 'dart:async';
 
 
@@ -423,6 +424,14 @@ class _WorkoutPageState extends State<WorkoutPage> {
           personalRecords: personalRecords,
           onSave: () async {
             await DatabaseHelper.instance.saveWorkout(workout);
+            double maxWeightLiftedToday = 0;
+            for (final ex in exercises) {
+              for (final s in ex.sets) {
+                if (s.weight > maxWeightLiftedToday) {
+                  maxWeightLiftedToday = s.weight;
+                }
+              }
+            }
             // Update PRs in database
             for (final exercise in exercises) {
               if (exercise.exercise == null) continue;
@@ -430,6 +439,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
                   .updatePRsForWorkout(exercise.exercise!.id, workout.exercises
                   .firstWhere((e) => e.exerciseRefId == exercise.exercise!.id)
                   .sets);
+            }
+            if (context.mounted) {
+              final allWorkouts = await DatabaseHelper.instance.getAllWorkouts();
+              final actualWorkoutCount = allWorkouts.where((w) => !w.name.startsWith('[ROUTINE]')).length;
+
+              await AchievementService.checkWorkoutMilestones(context, actualWorkoutCount);
+              await AchievementService.checkWeightMilestones(context, maxWeightLiftedToday);
             }
             setState(() {
               workoutStarted = false;
@@ -698,19 +714,24 @@ class _ExerciseCardState extends State<ExerciseCard> {
     });
   }
 
-  Future<void> _checkSetForPR(int index) async {
+    Future<void> _checkSetForPR(int index) async {
     final s = widget.exercise.sets[index];
     if (widget.exercise.exercise == null) return;
 
     final exerciseId = widget.exercise.exercise!.id;
-    
+
     // Check if this exercise has any previous records
-    final previousProgress = await DatabaseHelper.instance.getExerciseProgress(exerciseId);
+    final previousProgress = await DatabaseHelper.instance.getExerciseProgress(
+      exerciseId,
+    );
     final hasHistory = previousProgress.isNotEmpty;
-    
+
     // Only detect PR if exercise has previous history
     if (hasHistory) {
-      s.isPRWeight = await DatabaseHelper.instance.isWeightPR(exerciseId, s.weight);
+      s.isPRWeight = await DatabaseHelper.instance.isWeightPR(
+        exerciseId,
+        s.weight,
+      );
       s.isPRReps = await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
     }
 
