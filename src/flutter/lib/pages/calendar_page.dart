@@ -19,6 +19,11 @@ class _CalendarPageState extends State<CalendarPage> {
   Map<DateTime, Map<String, dynamic>> _planByDay = {};
   bool _isLoading = true;
 
+  // Colours
+  static const _gold = Color(0xFFFFD700);
+  static const _blue = Colors.blueAccent;
+  static const _orange = Colors.deepOrange;
+
   @override
   void initState() {
     super.initState();
@@ -40,14 +45,20 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   DateTime _normalise(DateTime d) => DateTime(d.year, d.month, d.day);
+  DateTime get _today => _normalise(DateTime.now());
 
   WorkoutModel? _workoutFor(DateTime day) => _workoutByDay[_normalise(day)];
   Map<String, dynamic>? _planFor(DateTime day) => _planByDay[_normalise(day)];
 
   bool _hasWorkout(DateTime day) => _workoutFor(day) != null;
   bool _hasPlan(DateTime day) => _planFor(day) != null;
-  bool _isFuture(DateTime day) =>
-      _normalise(day).isAfter(_normalise(DateTime.now()));
+  bool _isFuture(DateTime day) => _normalise(day).isAfter(_today);
+
+  /// Past day that had a plan but no workout recorded
+  bool _isMissed(DateTime day) {
+    final n = _normalise(day);
+    return n.isBefore(_today) && _hasPlan(day) && !_hasWorkout(day);
+  }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
@@ -61,9 +72,47 @@ class _CalendarPageState extends State<CalendarPage> {
       return;
     }
 
+    if (_isMissed(selectedDay)) {
+      _showMissedDialog(selectedDay);
+      return;
+    }
+
     if (_isFuture(selectedDay)) {
       _showPlanDialog(selectedDay);
     }
+  }
+
+  // ── Missed day dialog ─────────────────────────────────────────────────────
+
+  void _showMissedDialog(DateTime day) {
+    final plan = _planFor(day)!;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Missed workout'),
+        content: Text(
+          'You planned "${plan['routine_name']}" for ${_formatDate(day)} but did not complete it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _gold,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              await DatabaseHelper.instance.deletePlanByDate(day);
+              await _loadData();
+            },
+            child: const Text('Remove plan'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Plan dialog ───────────────────────────────────────────────────────────
@@ -76,12 +125,12 @@ class _CalendarPageState extends State<CalendarPage> {
 
     if (routines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No routines found. Create a routine first.')),
+        const SnackBar(
+            content: Text('No routines found. Create a routine first.')),
       );
       return;
     }
 
-    // If a plan already exists for this day — ask to remove
     final existing = _planFor(day);
     if (existing != null) {
       _showRemovePlanDialog(day, existing);
@@ -104,8 +153,8 @@ class _CalendarPageState extends State<CalendarPage> {
               final r = routines[index];
               final name = r.name.replaceFirst('[ROUTINE] ', '');
               return ListTile(
-                leading: const Icon(Icons.fitness_center,
-                    color: Color(0xFFFFD700)),
+                leading:
+                const Icon(Icons.fitness_center, color: _gold),
                 title: Text(name),
                 subtitle: Text('${r.exercises.length} exercises'),
                 onTap: () async {
@@ -185,11 +234,11 @@ class _CalendarPageState extends State<CalendarPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFD700).withOpacity(0.15),
+                    color: _gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.fitness_center,
-                      color: Color(0xFFFFD700), size: 28),
+                      color: _gold, size: 28),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -239,7 +288,7 @@ class _CalendarPageState extends State<CalendarPage> {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD700),
+                  backgroundColor: _gold,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -328,8 +377,8 @@ class _CalendarPageState extends State<CalendarPage> {
                   padding: const EdgeInsets.all(8),
                   child: TableCalendar(
                     firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.now()
-                        .add(const Duration(days: 365)),
+                    lastDay:
+                    DateTime.now().add(const Duration(days: 365)),
                     focusedDay: _focusedDay,
                     selectedDayPredicate: (day) =>
                         isSameDay(_selectedDay, day),
@@ -348,11 +397,11 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                     calendarStyle: CalendarStyle(
                       todayDecoration: BoxDecoration(
-                        color: const Color(0xFFFFD700).withOpacity(0.4),
+                        color: _gold.withOpacity(0.4),
                         shape: BoxShape.circle,
                       ),
                       selectedDecoration: const BoxDecoration(
-                          color: Color(0xFFFFD700), shape: BoxShape.circle),
+                          color: _gold, shape: BoxShape.circle),
                       selectedTextStyle: const TextStyle(
                           color: Colors.black, fontWeight: FontWeight.bold),
                       outsideDaysVisible: false,
@@ -360,18 +409,13 @@ class _CalendarPageState extends State<CalendarPage> {
                     calendarBuilders: CalendarBuilders(
                       defaultBuilder: (context, day, _) {
                         if (_hasWorkout(day)) {
-                          return _DayCell(
-                            day: day,
-                            color: const Color(0xFFFFD700),
-                            textColor: Colors.black,
-                          );
+                          return _DayCell(day: day, color: _gold, textColor: Colors.black);
+                        }
+                        if (_isMissed(day)) {
+                          return _DayCell(day: day, color: _orange, textColor: Colors.white);
                         }
                         if (_hasPlan(day)) {
-                          return _DayCell(
-                            day: day,
-                            color: Colors.blueAccent,
-                            textColor: Colors.white,
-                          );
+                          return _DayCell(day: day, color: _blue, textColor: Colors.white);
                         }
                         return null;
                       },
@@ -388,17 +432,20 @@ class _CalendarPageState extends State<CalendarPage> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
-                  _LegendDot(color: const Color(0xFFFFD700)),
-                  const SizedBox(width: 6),
-                  const Text('Completed'),
-                  const SizedBox(width: 16),
-                  _LegendDot(color: Colors.blueAccent),
-                  const SizedBox(width: 6),
+                  _LegendDot(color: _gold),
+                  const SizedBox(width: 4),
+                  const Text('Done'),
+                  const SizedBox(width: 12),
+                  _LegendDot(color: _blue),
+                  const SizedBox(width: 4),
                   const Text('Planned'),
+                  const SizedBox(width: 12),
+                  _LegendDot(color: _orange),
+                  const SizedBox(width: 4),
+                  const Text('Missed'),
                   const Spacer(),
-                  _LegendDot(
-                      color: const Color(0xFFFFD700).withOpacity(0.4)),
-                  const SizedBox(width: 6),
+                  _LegendDot(color: _gold.withOpacity(0.4)),
+                  const SizedBox(width: 4),
                   const Text('Today'),
                 ],
               ),
@@ -418,7 +465,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   child: Row(
                     children: [
                       const Icon(Icons.calendar_month,
-                          color: Color(0xFFFFD700), size: 32),
+                          color: _gold, size: 32),
                       const SizedBox(width: 16),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +488,7 @@ class _CalendarPageState extends State<CalendarPage> {
                         style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFFFD700)),
+                            color: _gold),
                       ),
                     ],
                   ),
