@@ -12,7 +12,8 @@ import 'dart:async';
 
 
 class WorkoutPage extends StatefulWidget {
-  const WorkoutPage({super.key});
+  final int? initialRoutineId;
+  const WorkoutPage({super.key, this.initialRoutineId});
 
   @override
   State<WorkoutPage> createState() => _WorkoutPageState();
@@ -24,7 +25,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Timer? timer;
   bool workoutStarted = false;
   bool isRoutineMode = false;
-  int restDuration = 90; // cia default value
+  int restDuration = 90;
   int currentRestSeconds = 0;
   Timer? restTimer;
 
@@ -32,8 +33,31 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   int _selectedRating = 0;
   final TextEditingController _commentController = TextEditingController();
-  final TextEditingController _workoutNameController =
-  TextEditingController();
+  final TextEditingController _workoutNameController = TextEditingController();
+
+  // ================= INIT =================
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialRoutineId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAndStartRoutine(widget.initialRoutineId!);
+      });
+    }
+  }
+
+  Future<void> _loadAndStartRoutine(int routineId) async {
+    final all = await DatabaseHelper.instance.getAllWorkouts();
+    final routine = all.firstWhere(
+          (w) => w.id == routineId,
+      orElse: () => throw Exception('Routine not found'),
+    );
+    startRoutine(routine);
+    startTimer();
+  }
+
+  // ================= TIMER =================
 
   void startTimer() {
     timer?.cancel();
@@ -80,7 +104,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   void _handleRestOver() {
     HapticFeedback.vibrate();
-    debugPrint("brrrrr brrr brrrrrrrr");
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Rest over, start your set."),
@@ -166,13 +189,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
       isRoutineMode = false;
       seconds = 0;
     });
-
-    setState(() {
-      exercises = routineExercises;
-      workoutStarted = true;
-      isRoutineMode = false;
-      seconds = 0;
-    });
   }
 
   void showRoutinePicker() async {
@@ -205,13 +221,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: r.exercises.map((e) {
-                      final exerciseInfo = getExerciseById(e.exerciseRefId); // lookup from catalog
+                      final exerciseInfo = getExerciseById(e.exerciseRefId);
                       final exerciseName = exerciseInfo?.name ?? 'Unknown Exercise';
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('• $exerciseName'), // now show name instead of ID
+                          Text('• $exerciseName'),
                           ...e.sets.asMap().entries.map((entry) {
                             final i = entry.key + 1;
                             final s = entry.value;
@@ -358,16 +374,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
     stopTimer();
     await _showRatingDialog();
 
-    // Detect personal records for each set (only if exercise has history)
     for (final exercise in exercises) {
       if (exercise.exercise == null) continue;
-      
-      // Check if this exercise has any previous history
+
       final previousProgress = await DatabaseHelper.instance
           .getExerciseProgress(exercise.exercise!.id);
       final hasHistory = previousProgress.isNotEmpty;
-      
-      // Only detect PR if exercise has previous history
+
       if (hasHistory) {
         for (final set in exercise.sets) {
           set.isPRWeight = await DatabaseHelper.instance
@@ -395,8 +408,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       )
           .toList(),
     );
-     
-    // PR tikrinimas
+
     final List<String> personalRecords = [];
     for (final exercise in exercises) {
       if (exercise.exercise == null) continue;
@@ -432,20 +444,26 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 }
               }
             }
-            // Update PRs in database
             for (final exercise in exercises) {
               if (exercise.exercise == null) continue;
-              await DatabaseHelper.instance
-                  .updatePRsForWorkout(exercise.exercise!.id, workout.exercises
-                  .firstWhere((e) => e.exerciseRefId == exercise.exercise!.id)
-                  .sets);
+              await DatabaseHelper.instance.updatePRsForWorkout(
+                exercise.exercise!.id,
+                workout.exercises
+                    .firstWhere(
+                        (e) => e.exerciseRefId == exercise.exercise!.id)
+                    .sets,
+              );
             }
             if (context.mounted) {
-              final allWorkouts = await DatabaseHelper.instance.getAllWorkouts();
-              final actualWorkoutCount = allWorkouts.where((w) => !w.name.startsWith('[ROUTINE]')).length;
-
-              await AchievementService.checkWorkoutMilestones(context, actualWorkoutCount);
-              await AchievementService.checkWeightMilestones(context, maxWeightLiftedToday);
+              final allWorkouts =
+              await DatabaseHelper.instance.getAllWorkouts();
+              final actualWorkoutCount = allWorkouts
+                  .where((w) => !w.name.startsWith('[ROUTINE]'))
+                  .length;
+              await AchievementService.checkWorkoutMilestones(
+                  context, actualWorkoutCount);
+              await AchievementService.checkWeightMilestones(
+                  context, maxWeightLiftedToday);
             }
             setState(() {
               workoutStarted = false;
@@ -465,8 +483,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
   @override
   void dispose() {
     timer?.cancel();
+    restTimer?.cancel();
     _commentController.dispose();
-    _workoutNameController.dispose(); // Dispose controller
+    _workoutNameController.dispose();
     super.dispose();
   }
 
@@ -497,141 +516,149 @@ class _WorkoutPageState extends State<WorkoutPage> {
       ),
       body: workoutStarted
           ? Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
+                TextField(
+                  controller: _workoutNameController,
+                  decoration:
+                  const InputDecoration(labelText: "Workout Name"),
+                  onChanged: (val) => workoutName = val,
+                ),
+                const SizedBox(height: 16),
+                if (!isRoutineMode)
+                  Text(
+                    formattedTime,
+                    style: const TextStyle(
+                        fontSize: 48, fontWeight: FontWeight.bold),
+                  ),
+                const SizedBox(height: 8),
+                if (!isRoutineMode)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      TextField(
-                        controller: _workoutNameController,
-                        decoration: const InputDecoration(labelText: "Workout Name"),
-                        onChanged: (val) => workoutName = val,
-                      ),
-                      const SizedBox(height: 16),
-                      if (!isRoutineMode)
-                        Text(
-                          formattedTime,
-                          style: const TextStyle(
-                              fontSize: 48, fontWeight: FontWeight.bold),
-                        ),
-                      const SizedBox(height: 8),
-                      if (!isRoutineMode)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                                onPressed: startTimer, child: const Text("Start")),
-                            const SizedBox(width: 16),
-                            ElevatedButton(
-                                onPressed: stopTimer, child: const Text("Stop")),
-                          ],
-                        ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: exercises.length,
-                          itemBuilder: (context, index) {
-                            return ExerciseCard(
-                              exercise: exercises[index],
-                              onChanged: (ex) =>
-                                  setState(() => exercises[index] = ex),
-                              onSetCompleted: startRestTimer,
-                            );
-                          },
-                        ),
-                      ),
                       ElevatedButton(
-                          onPressed: addExercise,
-                          child: const Text("Add Exercise")),
-                      const SizedBox(height: 8),
+                          onPressed: startTimer,
+                          child: const Text("Start")),
+                      const SizedBox(width: 16),
                       ElevatedButton(
-                        onPressed: saveWorkout,
-                        child: Text(isRoutineMode ? "Save Routine" : "Save Workout"),
+                          onPressed: stopTimer,
+                          child: const Text("Stop")),
+                    ],
+                  ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: exercises.length,
+                    itemBuilder: (context, index) {
+                      return ExerciseCard(
+                        exercise: exercises[index],
+                        onChanged: (ex) =>
+                            setState(() => exercises[index] = ex),
+                        onSetCompleted: startRestTimer,
+                      );
+                    },
+                  ),
+                ),
+                ElevatedButton(
+                    onPressed: addExercise,
+                    child: const Text("Add Exercise")),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: saveWorkout,
+                  child: Text(
+                      isRoutineMode ? "Save Routine" : "Save Workout"),
+                ),
+                if (currentRestSeconds > 0) const SizedBox(height: 80),
+              ],
+            ),
+          ),
+          if (currentRestSeconds > 0)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                color: Colors.blueAccent,
+                padding: const EdgeInsets.symmetric(
+                    vertical: 12, horizontal: 20),
+                child: SafeArea(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.timer, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Resting: ${currentRestSeconds}s",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                      if (currentRestSeconds > 0) const SizedBox(height: 80),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => setState(
+                                    () => currentRestSeconds += 30),
+                            child: const Text("+30s",
+                                style:
+                                TextStyle(color: Colors.white)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.skip_next,
+                                color: Colors.white),
+                            onPressed: () {
+                              restTimer?.cancel();
+                              setState(() => currentRestSeconds = 0);
+                            },
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-
-                if (currentRestSeconds > 0)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      color: Colors.blueAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                      child: SafeArea(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.timer, color: Colors.white),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "Resting: ${currentRestSeconds}s",
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                TextButton(
-                                  onPressed: () => setState(() => currentRestSeconds += 30),
-                                  child: const Text("+30s", style: TextStyle(color: Colors.white)),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.skip_next, color: Colors.white),
-                                  onPressed: () {
-                                    restTimer?.cancel();
-                                    setState(() => currentRestSeconds = 0);
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            )
-          : Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        workoutStarted = true;
-                        isRoutineMode = false;
-                      });
-                      startTimer();
-                    },
-                    child: const Text("New Workout"),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        workoutStarted = true;
-                        isRoutineMode = true;
-                      });
-                    },
-                    child: const Text("Create Routine"),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: showRoutinePicker,
-                    child: const Text("Start Routine"),
-                  ),
-                ],
               ),
             ),
+        ],
+      )
+          : Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  workoutStarted = true;
+                  isRoutineMode = false;
+                });
+                startTimer();
+              },
+              child: const Text("New Workout"),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  workoutStarted = true;
+                  isRoutineMode = true;
+                });
+              },
+              child: const Text("Create Routine"),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: showRoutinePicker,
+              child: const Text("Start Routine"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -686,10 +713,8 @@ class ExerciseCard extends StatefulWidget {
 }
 
 class _ExerciseCardState extends State<ExerciseCard> {
-
   @override
   void dispose() {
-    // išvalom controllerius kai widget sunaikinamas
     for (var s in widget.exercise.sets) {
       s.dispose();
     }
@@ -698,9 +723,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
 
   void addSet() {
     setState(() {
-      widget.exercise.sets.add(
-        WorkoutSet(reps: 0, weight: 0),
-      );
+      widget.exercise.sets.add(WorkoutSet(reps: 0, weight: 0));
       widget.onChanged(widget.exercise);
       widget.onSetCompleted();
     });
@@ -714,25 +737,21 @@ class _ExerciseCardState extends State<ExerciseCard> {
     });
   }
 
-    Future<void> _checkSetForPR(int index) async {
+  Future<void> _checkSetForPR(int index) async {
     final s = widget.exercise.sets[index];
     if (widget.exercise.exercise == null) return;
 
     final exerciseId = widget.exercise.exercise!.id;
 
-    // Check if this exercise has any previous records
-    final previousProgress = await DatabaseHelper.instance.getExerciseProgress(
-      exerciseId,
-    );
+    final previousProgress =
+    await DatabaseHelper.instance.getExerciseProgress(exerciseId);
     final hasHistory = previousProgress.isNotEmpty;
 
-    // Only detect PR if exercise has previous history
     if (hasHistory) {
-      s.isPRWeight = await DatabaseHelper.instance.isWeightPR(
-        exerciseId,
-        s.weight,
-      );
-      s.isPRReps = await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
+      s.isPRWeight =
+      await DatabaseHelper.instance.isWeightPR(exerciseId, s.weight);
+      s.isPRReps =
+      await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
     }
 
     setState(() {
@@ -770,7 +789,6 @@ class _ExerciseCardState extends State<ExerciseCard> {
                         builder: (_) => const ExerciseBrowserPage(),
                       ),
                     );
-
                     if (result != null) {
                       setState(() {
                         widget.exercise.exercise = result;
@@ -783,8 +801,6 @@ class _ExerciseCardState extends State<ExerciseCard> {
                 ),
               ],
             ),
-
-            // SETAI
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -803,8 +819,10 @@ class _ExerciseCardState extends State<ExerciseCard> {
                           child: TextField(
                             keyboardType: TextInputType.number,
                             controller: s.repsController,
-                            decoration: const InputDecoration(labelText: "Reps"),
-                            onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
+                            decoration:
+                            const InputDecoration(labelText: "Reps"),
+                            onChanged: (val) =>
+                            s.reps = int.tryParse(val) ?? 0,
                             enabled: !s.isCompleted,
                           ),
                         ),
@@ -813,9 +831,11 @@ class _ExerciseCardState extends State<ExerciseCard> {
                           child: TextField(
                             keyboardType: TextInputType.number,
                             controller: s.weightController,
-                            decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
+                            decoration: InputDecoration(
+                                labelText:
+                                "Weight ${units.weightLabel()}"),
                             onChanged: (val) =>
-                                s.weight = double.tryParse(val) ?? 0,
+                            s.weight = double.tryParse(val) ?? 0,
                             enabled: !s.isCompleted,
                           ),
                         ),
@@ -827,35 +847,28 @@ class _ExerciseCardState extends State<ExerciseCard> {
                     ),
                     if (s.isCompleted && (s.isPRWeight || s.isPRReps))
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         child: Row(
                           children: [
                             if (s.isPRWeight)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
+                                    horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: Colors.amber,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: const Row(
                                   children: [
-                                    Icon(
-                                      Icons.star,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
+                                    Icon(Icons.star,
+                                        size: 16, color: Colors.white),
                                     SizedBox(width: 6),
-                                    Text(
-                                      'PR Weight!',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    Text('PR Weight!',
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -863,29 +876,21 @@ class _ExerciseCardState extends State<ExerciseCard> {
                             if (s.isPRReps)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
+                                    horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: Colors.deepOrange,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: const Row(
                                   children: [
-                                    Icon(
-                                      Icons.trending_up,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
+                                    Icon(Icons.trending_up,
+                                        size: 16, color: Colors.white),
                                     SizedBox(width: 6),
-                                    Text(
-                                      'PR Reps!',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    Text('PR Reps!',
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -896,9 +901,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
                 );
               },
             ),
-
             const SizedBox(height: 8),
-
             TextButton(
               onPressed: addSet,
               child: const Text("Add Set"),
