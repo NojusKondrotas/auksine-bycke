@@ -16,21 +16,25 @@ class _CalendarPageState extends State<CalendarPage> {
   DateTime? _selectedDay;
 
   Map<DateTime, WorkoutModel> _workoutByDay = {};
+  Map<DateTime, Map<String, dynamic>> _planByDay = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadWorkouts();
+    _loadData();
   }
 
-  Future<void> _loadWorkouts() async {
+  Future<void> _loadData() async {
     final all = await DatabaseHelper.instance.getAllWorkouts();
     final completed = all.where((w) => !w.name.startsWith('[ROUTINE]'));
+    final plans = await DatabaseHelper.instance.getAllPlans();
+
     setState(() {
       _workoutByDay = {
         for (final w in completed) _normalise(w.date): w,
       };
+      _planByDay = plans;
       _isLoading = false;
     });
   }
@@ -38,17 +42,132 @@ class _CalendarPageState extends State<CalendarPage> {
   DateTime _normalise(DateTime d) => DateTime(d.year, d.month, d.day);
 
   WorkoutModel? _workoutFor(DateTime day) => _workoutByDay[_normalise(day)];
+  Map<String, dynamic>? _planFor(DateTime day) => _planByDay[_normalise(day)];
 
   bool _hasWorkout(DateTime day) => _workoutFor(day) != null;
+  bool _hasPlan(DateTime day) => _planFor(day) != null;
+  bool _isFuture(DateTime day) =>
+      _normalise(day).isAfter(_normalise(DateTime.now()));
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     setState(() {
       _selectedDay = selectedDay;
       _focusedDay = focusedDay;
     });
+
     final workout = _workoutFor(selectedDay);
-    if (workout != null) _showWorkoutSheet(workout);
+    if (workout != null) {
+      _showWorkoutSheet(workout);
+      return;
+    }
+
+    if (_isFuture(selectedDay)) {
+      _showPlanDialog(selectedDay);
+    }
   }
+
+  // ── Plan dialog ───────────────────────────────────────────────────────────
+
+  Future<void> _showPlanDialog(DateTime day) async {
+    final all = await DatabaseHelper.instance.getAllWorkouts();
+    final routines = all.where((w) => w.name.startsWith('[ROUTINE]')).toList();
+
+    if (!mounted) return;
+
+    if (routines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No routines found. Create a routine first.')),
+      );
+      return;
+    }
+
+    // If a plan already exists for this day — ask to remove
+    final existing = _planFor(day);
+    if (existing != null) {
+      _showRemovePlanDialog(day, existing);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Plan workout for ${_formatDate(day)}',
+          style: const TextStyle(fontSize: 16),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: routines.length,
+            itemBuilder: (context, index) {
+              final r = routines[index];
+              final name = r.name.replaceFirst('[ROUTINE] ', '');
+              return ListTile(
+                leading: const Icon(Icons.fitness_center,
+                    color: Color(0xFFFFD700)),
+                title: Text(name),
+                subtitle: Text('${r.exercises.length} exercises'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await DatabaseHelper.instance.savePlan(
+                    plannedDate: day,
+                    routineId: r.id!,
+                    routineName: name,
+                  );
+                  await _loadData();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            '$name planned for ${_formatDate(day)}')),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRemovePlanDialog(
+      DateTime day, Map<String, dynamic> plan) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove plan?'),
+        content: Text(
+            '${plan['routine_name']} is already planned for ${_formatDate(day)}. Remove it?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(context);
+              await DatabaseHelper.instance
+                  .deletePlan(plan['id'] as int);
+              await _loadData();
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Workout bottom sheet ──────────────────────────────────────────────────
 
   void _showWorkoutSheet(WorkoutModel workout) {
     showModalBottomSheet(
@@ -91,7 +210,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   Row(
                     children: List.generate(
                       workout.rating,
-                      (_) => const Icon(Icons.star,
+                          (_) => const Icon(Icons.star,
                           color: Colors.amber, size: 18),
                     ),
                   ),
@@ -153,13 +272,13 @@ class _CalendarPageState extends State<CalendarPage> {
 
   double _totalVolume(WorkoutModel w) => w.exercises.fold(
       0.0,
-      (sum, ex) =>
-          sum + ex.sets.fold(0.0, (s, set) => s + set.reps * set.weight));
+          (sum, ex) =>
+      sum + ex.sets.fold(0.0, (s, set) => s + set.reps * set.weight));
 
   String _formatDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.'
-      '${d.month.toString().padLeft(2, '0')}.'
-      '${d.year}';
+          '${d.month.toString().padLeft(2, '0')}.'
+          '${d.year}';
 
   String _formatDuration(int seconds) {
     final m = (seconds ~/ 60).toString().padLeft(2, '0');
@@ -169,7 +288,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   int _workoutsThisMonth() => _workoutByDay.keys
       .where((d) =>
-          d.year == _focusedDay.year && d.month == _focusedDay.month)
+  d.year == _focusedDay.year && d.month == _focusedDay.month)
       .length;
 
   // ── Build ────────────────────────────────────────────────────────────────
@@ -209,7 +328,8 @@ class _CalendarPageState extends State<CalendarPage> {
                   padding: const EdgeInsets.all(8),
                   child: TableCalendar(
                     firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.now(),
+                    lastDay: DateTime.now()
+                        .add(const Duration(days: 365)),
                     focusedDay: _focusedDay,
                     selectedDayPredicate: (day) =>
                         isSameDay(_selectedDay, day),
@@ -240,19 +360,17 @@ class _CalendarPageState extends State<CalendarPage> {
                     calendarBuilders: CalendarBuilders(
                       defaultBuilder: (context, day, _) {
                         if (_hasWorkout(day)) {
-                          return Container(
-                            margin: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                                color: Color(0xFFFFD700),
-                                shape: BoxShape.circle),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${day.day}',
-                              style: const TextStyle(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14),
-                            ),
+                          return _DayCell(
+                            day: day,
+                            color: const Color(0xFFFFD700),
+                            textColor: Colors.black,
+                          );
+                        }
+                        if (_hasPlan(day)) {
+                          return _DayCell(
+                            day: day,
+                            color: Colors.blueAccent,
+                            textColor: Colors.white,
                           );
                         }
                         return null;
@@ -260,6 +378,29 @@ class _CalendarPageState extends State<CalendarPage> {
                     ),
                   ),
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Legend ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  _LegendDot(color: const Color(0xFFFFD700)),
+                  const SizedBox(width: 6),
+                  const Text('Completed'),
+                  const SizedBox(width: 16),
+                  _LegendDot(color: Colors.blueAccent),
+                  const SizedBox(width: 6),
+                  const Text('Planned'),
+                  const Spacer(),
+                  _LegendDot(
+                      color: const Color(0xFFFFD700).withOpacity(0.4)),
+                  const SizedBox(width: 6),
+                  const Text('Today'),
+                ],
               ),
             ),
 
@@ -282,11 +423,10 @@ class _CalendarPageState extends State<CalendarPage> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'This month',
-                            style: TextStyle(
-                                color: Colors.grey.shade500, fontSize: 13),
-                          ),
+                          Text('This month',
+                              style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13)),
                           const SizedBox(height: 4),
                           Text(
                             '$trainedCount / $daysInMonth days trained',
@@ -317,7 +457,41 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 }
 
-// ── Widgets ───────────────────────────────────────────────────────────────────
+// ── Reusable day cell ─────────────────────────────────────────────────────────
+
+class _DayCell extends StatelessWidget {
+  final DateTime day;
+  final Color color;
+  final Color textColor;
+  const _DayCell(
+      {required this.day, required this.color, required this.textColor});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.all(4),
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    alignment: Alignment.center,
+    child: Text(
+      '${day.day}',
+      style: TextStyle(
+          color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
+    ),
+  );
+}
+
+// ── Small helpers ─────────────────────────────────────────────────────────────
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  const _LegendDot({required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 12,
+    height: 12,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+}
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
@@ -328,20 +502,20 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: Colors.grey.shade500),
-            const SizedBox(width: 10),
-            Text(label, style: TextStyle(color: Colors.grey.shade500)),
-            const Spacer(),
-            Flexible(
-              child: Text(value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14),
-                  textAlign: TextAlign.end),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey.shade500),
+        const SizedBox(width: 10),
+        Text(label, style: TextStyle(color: Colors.grey.shade500)),
+        const Spacer(),
+        Flexible(
+          child: Text(value,
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 14),
+              textAlign: TextAlign.end),
         ),
-      );
+      ],
+    ),
+  );
 }
