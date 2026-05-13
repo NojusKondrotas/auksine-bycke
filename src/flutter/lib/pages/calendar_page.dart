@@ -4,6 +4,7 @@ import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'package:auksine_bycke/pages/workout_summary_page.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
+import 'package:auksine_bycke/services/notification_service.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -76,8 +77,8 @@ class _CalendarPageState extends State<CalendarPage> {
       return;
     }
 
-    // Today or future with a plan — show plan sheet
-    if (_hasPlan(selectedDay) && (_isToday(selectedDay) || _isFuture(selectedDay))) {
+    if (_hasPlan(selectedDay) &&
+        (_isToday(selectedDay) || _isFuture(selectedDay))) {
       _showPlanSheet(selectedDay, _planFor(selectedDay)!);
       return;
     }
@@ -87,7 +88,7 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
-  // ── Plan bottom sheet (tap on planned day) ────────────────────────────────
+  // ── Plan bottom sheet ─────────────────────────────────────────────────────
 
   void _showPlanSheet(DateTime day, Map<String, dynamic> plan) {
     final routineName = plan['routine_name'] as String;
@@ -103,7 +104,6 @@ class _CalendarPageState extends State<CalendarPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Row(
               children: [
                 Container(
@@ -135,10 +135,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
-            // Start Workout button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -153,25 +150,19 @@ class _CalendarPageState extends State<CalendarPage> {
                 label: const Text('Start Workout',
                     style: TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16)),
-                onPressed: () async {
+                onPressed: () {
                   Navigator.pop(context);
-                  // Navigate to WorkoutPage and pass the routine id
-                  // WorkoutPage will pick up the routine via startRoutine()
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => WorkoutPage(
-                        initialRoutineId: routineId,
-                      ),
+                      builder: (_) =>
+                          WorkoutPage(initialRoutineId: routineId),
                     ),
                   );
                 },
               ),
             ),
-
             const SizedBox(height: 12),
-
-            // Remove plan button
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -186,6 +177,10 @@ class _CalendarPageState extends State<CalendarPage> {
                 label: const Text('Remove plan'),
                 onPressed: () async {
                   Navigator.pop(context);
+                  // Cancel scheduled notification
+                  await NotificationService.cancelWorkoutReminder(
+                    NotificationService.idFromDate(day),
+                  );
                   await DatabaseHelper.instance
                       .deletePlan(plan['id'] as int);
                   await _loadData();
@@ -233,14 +228,16 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Future<void> _showPlanDialog(DateTime day) async {
     final all = await DatabaseHelper.instance.getAllWorkouts();
-    final routines = all.where((w) => w.name.startsWith('[ROUTINE]')).toList();
+    final routines =
+    all.where((w) => w.name.startsWith('[ROUTINE]')).toList();
 
     if (!mounted) return;
 
     if (routines.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('No routines found. Create a routine first.')),
+            content:
+            Text('No routines found. Create a routine first.')),
       );
       return;
     }
@@ -269,6 +266,12 @@ class _CalendarPageState extends State<CalendarPage> {
                     plannedDate: day,
                     routineId: r.id!,
                     routineName: name,
+                  );
+                  // Schedule notification for 8:00 AM on that day
+                  await NotificationService.scheduleWorkoutReminder(
+                    id: NotificationService.idFromDate(day),
+                    routineName: name,
+                    plannedDate: day,
                   );
                   await _loadData();
                   if (!mounted) return;
@@ -439,6 +442,7 @@ class _CalendarPageState extends State<CalendarPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
+
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -508,9 +512,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
@@ -533,9 +535,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Card(
@@ -577,7 +577,6 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
           ],
         ),
