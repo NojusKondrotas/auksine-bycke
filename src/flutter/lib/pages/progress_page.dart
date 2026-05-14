@@ -7,6 +7,7 @@ import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/utils/exercise_info.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'package:auksine_bycke/database/achievement_db.dart';
+import 'package:auksine_bycke/pages/workout_page.dart';
 
 
 class ProgressPage extends StatefulWidget {
@@ -369,6 +370,26 @@ class _ProgressPageState extends State<ProgressPage>
                           }),
                           const Divider(),
                         ],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.repeat),
+                        label: const Text('Repeat Workout'),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => WorkoutPage(
+                                templateWorkout: w,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),

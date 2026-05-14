@@ -13,7 +13,8 @@ import 'dart:async';
 
 class WorkoutPage extends StatefulWidget {
   final int? initialRoutineId;
-  const WorkoutPage({super.key, this.initialRoutineId});
+  final WorkoutModel? templateWorkout;
+  const WorkoutPage({super.key, this.initialRoutineId, this.templateWorkout});
 
   @override
   State<WorkoutPage> createState() => _WorkoutPageState();
@@ -45,6 +46,11 @@ class _WorkoutPageState extends State<WorkoutPage> {
         _loadAndStartRoutine(widget.initialRoutineId!);
       });
     }
+    if (widget.templateWorkout != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadTemplateWorkout(widget.templateWorkout!);
+      });
+    }
   }
 
   Future<void> _loadAndStartRoutine(int routineId) async {
@@ -57,6 +63,37 @@ class _WorkoutPageState extends State<WorkoutPage> {
     startTimer();
   }
 
+  void _loadTemplateWorkout(WorkoutModel workout) {
+    workoutName = '${workout.name} Copy';
+    _workoutNameController.text = workoutName;
+
+    List<Exercise> templateExercises = [];
+
+    for (final exModel in workout.exercises) {
+      final info = getExerciseById(exModel.exerciseRefId);
+
+      templateExercises.add(
+        Exercise(
+          exercise: info,
+          sets: exModel.sets.map((s) {
+            return WorkoutSet(
+              reps: s.reps,
+              weight: s.weight,
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    setState(() {
+      exercises = templateExercises;
+      workoutStarted = true;
+      isRoutineMode = false;
+      seconds = 0;
+    });
+
+    startTimer();
+  }
   // ================= TIMER =================
 
   void startTimer() {
