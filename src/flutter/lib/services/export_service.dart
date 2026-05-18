@@ -1,29 +1,26 @@
 import 'dart:io';
-
 import 'package:auksine_bycke/database/database_helper.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ExportService {
   static Future<void> exportWorkouts() async {
-    final workouts =
-        await DatabaseHelper.instance.getAllWorkouts();
+    final workouts = await DatabaseHelper.instance.getAllWorkouts();
 
     final buffer = StringBuffer();
 
-    // CSV HEADER
-    buffer.writeln(
-      'Date,Workout Name,Exercise,Sets,Reps,Weight,Duration',
-    );
+    buffer.writeln('Date,Workout Name,Exercise,Set No,Reps,Weight,Duration');
 
     for (final workout in workouts) {
       for (final exercise in workout.exercises) {
-        for (final set in exercise.sets) {
+        for (int i = 0; i < exercise.sets.length; i++) {
+          final set = exercise.sets[i];
+
           buffer.writeln(
-            '"${workout.date}",'
+            '"${_formatDate(workout.date)}",'
             '"${workout.name}",'
             '"${exercise.exerciseRefId}",'
-            '"${exercise.sets.length}",'
+            '"${i + 1}",'
             '"${set.reps}",'
             '"${set.weight}",'
             '"${workout.duration}"',
@@ -32,11 +29,9 @@ class ExportService {
       }
     }
 
-    final directory = await getTemporaryDirectory();
+    final directory = Directory('/storage/emulated/0/Download');
 
-    final file = File(
-      '${directory.path}/workout_export.csv',
-    );
+    final file = File('${directory.path}/workout_export.csv');
 
     await file.writeAsString(buffer.toString());
 
@@ -44,5 +39,11 @@ class ExportService {
       [XFile(file.path)],
       text: 'Workout history export',
     );
+  }
+
+  static String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.year}';
   }
 }

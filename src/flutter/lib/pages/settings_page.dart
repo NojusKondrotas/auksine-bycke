@@ -1,6 +1,7 @@
 import 'package:auksine_bycke/utils/UnitSystem.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/services/notification_service.dart';
+import 'package:auksine_bycke/services/export_service.dart';
 
 class SettingsPage extends StatefulWidget {
   final Function(bool) onThemeChanged;
@@ -238,6 +239,44 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const Divider(),
 
+          ListTile(
+            leading: const Icon(Icons.download),
+            title: const Text('Export Workout Data'),
+            subtitle: const Text('Export workout history as CSV'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () async {
+            try {
+              ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+              content: Text('Preparing export...'),
+              duration: Duration(seconds: 1),
+              ),
+              );
+
+            await ExportService.exportWorkouts();
+
+            if (!mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Workout data exported successfully'),
+                ),
+              );
+            } catch (e) {
+              if (!mounted) return;
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                content: Text('Export failed: $e'),
+                ),
+              );
+             }
+            },
+          ),
+
+
+          const Divider(),
+
           // ℹ About
           ListTile(
             leading: const Icon(Icons.info_outline),
@@ -255,6 +294,10 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 }
+
+
+
+
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({Key? key}) : super(key: key);
