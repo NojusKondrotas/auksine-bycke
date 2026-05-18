@@ -706,12 +706,44 @@ class Exercise {
   Exercise({required this.exercise, required this.sets});
 }
 
+enum SetType { normal, warmUp, dropSet, failure }
+
+extension SetTypeX on SetType {
+  String get label {
+    switch (this) {
+      case SetType.normal:   return 'Normal';
+      case SetType.warmUp:   return 'Warm-up';
+      case SetType.dropSet:  return 'Drop set';
+      case SetType.failure:  return 'Failure';
+    }
+  }
+
+  String get abbreviation {
+    switch (this) {
+      case SetType.normal:   return 'N';
+      case SetType.warmUp:   return 'W';
+      case SetType.dropSet:  return 'D';
+      case SetType.failure:  return 'F';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case SetType.normal:   return Colors.cyan;
+      case SetType.warmUp:   return Colors.orange;
+      case SetType.dropSet:  return Colors.deepPurple;
+      case SetType.failure:  return Colors.red;
+    }
+  }
+}
+
 class WorkoutSet {
   int reps;
   double weight;
   bool isCompleted = false;
   bool isPRWeight = false;
   bool isPRReps = false;
+  SetType setType;
 
   late TextEditingController repsController;
   late TextEditingController weightController;
@@ -722,6 +754,7 @@ class WorkoutSet {
     this.isCompleted = false,
     this.isPRWeight = false,
     this.isPRReps = false,
+    this.setType = SetType.normal,
   }) {
     repsController = TextEditingController(text: reps.toString());
     weightController = TextEditingController(text: weight.toString());
@@ -801,151 +834,183 @@ class _ExerciseCardState extends State<ExerciseCard> {
     }
   }
 
+  void _changeSetType(int index, SetType type) {
+    setState(() {
+      widget.exercise.sets[index].setType = type;
+      widget.onChanged(widget.exercise);
+    });
+  }
+
   @override
-  Widget build(BuildContext context) {
-    final units = UnitSystemScope.of(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.exercise.exercise?.name ?? 'No exercise selected',
-                    style: Theme.of(context).textTheme.titleMedium,
+Widget build(BuildContext context) {
+  final units = UnitSystemScope.of(context);
+  return Card(
+    margin: const EdgeInsets.symmetric(vertical: 8),
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.exercise.exercise?.name ?? 'No exercise selected',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<ExerciseInfo>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ExerciseBrowserPage(),
+                    ),
+                  );
+                  if (result != null) {
+                    setState(() {
+                      widget.exercise.exercise = result;
+                      widget.onChanged(widget.exercise);
+                    });
+                  }
+                },
+                icon: const Icon(Icons.search),
+                label: const Text('Select Exercise'),
+              ),
+            ],
+          ),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.exercise.sets.length,
+            itemBuilder: (context, index) {
+              final s = widget.exercise.sets[index];
+              final typeColor = s.setType.color;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: typeColor, width: 4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8, top: 4),
+                        child: PopupMenuButton<SetType>(
+                          initialValue: s.setType,
+                          onSelected: (type) => _changeSetType(index, type),
+                          itemBuilder: (_) => SetType.values.map((t) => PopupMenuItem(
+                            value: t,
+                            child: Row(children: [
+                              Container(
+                                width: 12, height: 12,
+                                decoration: BoxDecoration(color: t.color, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(t.label),
+                            ]),
+                          )).toList(),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 10, height: 10,
+                                decoration: BoxDecoration(color: typeColor, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                s.setType.label,
+                                style: TextStyle(fontSize: 12, color: typeColor, fontWeight: FontWeight.w600),
+                              ),
+                              const Icon(Icons.arrow_drop_down, size: 16),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: s.isCompleted,
+                            onChanged: (_) => _checkSetForPR(index),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              controller: s.repsController,
+                              decoration: const InputDecoration(labelText: "Reps"),
+                              onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
+                              enabled: !s.isCompleted,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              controller: s.weightController,
+                              decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
+                              onChanged: (val) => s.weight = double.tryParse(val) ?? 0,
+                              enabled: !s.isCompleted,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => removeSet(index),
+                          ),
+                        ],
+                      ),
+                      if (s.isCompleted && (s.isPRWeight || s.isPRReps))
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(
+                            children: [
+                              if (s.isPRWeight)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.star, size: 16, color: Colors.white),
+                                      SizedBox(width: 6),
+                                      Text('PR Weight!', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              const SizedBox(width: 12),
+                              if (s.isPRReps)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepOrange,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.trending_up, size: 16, color: Colors.white),
+                                      SizedBox(width: 6),
+                                      Text('PR Reps!', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push<ExerciseInfo>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ExerciseBrowserPage(),
-                      ),
-                    );
-                    if (result != null) {
-                      setState(() {
-                        widget.exercise.exercise = result;
-                        widget.onChanged(widget.exercise);
-                      });
-                    }
-                  },
-                  icon: const Icon(Icons.search),
-                  label: const Text('Select Exercise'),
-                ),
-              ],
-            ),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: widget.exercise.sets.length,
-              itemBuilder: (context, index) {
-                final s = widget.exercise.sets[index];
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: s.isCompleted,
-                          onChanged: (_) => _checkSetForPR(index),
-                        ),
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            controller: s.repsController,
-                            decoration:
-                            const InputDecoration(labelText: "Reps"),
-                            onChanged: (val) =>
-                            s.reps = int.tryParse(val) ?? 0,
-                            enabled: !s.isCompleted,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            controller: s.weightController,
-                            decoration: InputDecoration(
-                                labelText:
-                                "Weight ${units.weightLabel()}"),
-                            onChanged: (val) =>
-                            s.weight = double.tryParse(val) ?? 0,
-                            enabled: !s.isCompleted,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => removeSet(index),
-                        ),
-                      ],
-                    ),
-                    if (s.isCompleted && (s.isPRWeight || s.isPRReps))
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            if (s.isPRWeight)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.star,
-                                        size: 16, color: Colors.white),
-                                    SizedBox(width: 6),
-                                    Text('PR Weight!',
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
-                            const SizedBox(width: 12),
-                            if (s.isPRReps)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.deepOrange,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.trending_up,
-                                        size: 16, color: Colors.white),
-                                    SizedBox(width: 6),
-                                    Text('PR Reps!',
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: addSet,
-              child: const Text("Add Set"),
-            ),
-          ],
-        ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: addSet,
+            child: const Text("Add Set"),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
