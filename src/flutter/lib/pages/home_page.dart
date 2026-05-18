@@ -14,6 +14,8 @@ import 'package:auksine_bycke/utils/workout_tags/upper_body_tag.dart';
 import 'package:auksine_bycke/widgets/workout_plan/workout.dart';
 import 'package:flutter/material.dart';
 import 'package:auksine_bycke/widgets/streak_widget.dart';
+import 'package:auksine_bycke/database/achievement_db.dart';
+
 
 class HomePage extends StatefulWidget {
   final Function(bool) onThemeChanged;
@@ -38,6 +40,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     selectedIndex = widget.initialPage;
+    AchievementDatabase.instance.database;
   }
 
   void navigateBottomBar(int index) {

@@ -7,11 +7,14 @@ import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'package:auksine_bycke/utils/exercise_catalog.dart';
 import 'package:auksine_bycke/pages/workout_summary_page.dart';
 import 'package:flutter/services.dart';
+import 'package:auksine_bycke/services/achievement_service.dart';
 import 'dart:async';
 
 
 class WorkoutPage extends StatefulWidget {
-  const WorkoutPage({super.key});
+  final int? initialRoutineId;
+  final WorkoutModel? templateWorkout;
+  const WorkoutPage({super.key, this.initialRoutineId, this.templateWorkout});
 
   @override
   State<WorkoutPage> createState() => _WorkoutPageState();
@@ -23,7 +26,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Timer? timer;
   bool workoutStarted = false;
   bool isRoutineMode = false;
-  int restDuration = 90; // cia default value
+  int restDuration = 90;
   int currentRestSeconds = 0;
   Timer? restTimer;
 
@@ -31,8 +34,67 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   int _selectedRating = 0;
   final TextEditingController _commentController = TextEditingController();
-  final TextEditingController _workoutNameController =
-  TextEditingController();
+  final TextEditingController _workoutNameController = TextEditingController();
+
+  // ================= INIT =================
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialRoutineId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAndStartRoutine(widget.initialRoutineId!);
+      });
+    }
+    if (widget.templateWorkout != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadTemplateWorkout(widget.templateWorkout!);
+      });
+    }
+  }
+
+  Future<void> _loadAndStartRoutine(int routineId) async {
+    final all = await DatabaseHelper.instance.getAllWorkouts();
+    final routine = all.firstWhere(
+          (w) => w.id == routineId,
+      orElse: () => throw Exception('Routine not found'),
+    );
+    startRoutine(routine);
+    startTimer();
+  }
+
+  void _loadTemplateWorkout(WorkoutModel workout) {
+    workoutName = '${workout.name} Copy';
+    _workoutNameController.text = workoutName;
+
+    List<Exercise> templateExercises = [];
+
+    for (final exModel in workout.exercises) {
+      final info = getExerciseById(exModel.exerciseRefId);
+
+      templateExercises.add(
+        Exercise(
+          exercise: info,
+          sets: exModel.sets.map((s) {
+            return WorkoutSet(
+              reps: s.reps,
+              weight: s.weight,
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    setState(() {
+      exercises = templateExercises;
+      workoutStarted = true;
+      isRoutineMode = false;
+      seconds = 0;
+    });
+
+    startTimer();
+  }
+  // ================= TIMER =================
 
   void startTimer() {
     timer?.cancel();
@@ -79,7 +141,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   void _handleRestOver() {
     HapticFeedback.vibrate();
-    debugPrint("brrrrr brrr brrrrrrrr");
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Rest over, start your set."),
@@ -165,13 +226,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
       isRoutineMode = false;
       seconds = 0;
     });
-
-    setState(() {
-      exercises = routineExercises;
-      workoutStarted = true;
-      isRoutineMode = false;
-      seconds = 0;
-    });
   }
 
   void showRoutinePicker() async {
@@ -204,13 +258,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: r.exercises.map((e) {
-                      final exerciseInfo = getExerciseById(e.exerciseRefId); // lookup from catalog
+                      final exerciseInfo = getExerciseById(e.exerciseRefId);
                       final exerciseName = exerciseInfo?.name ?? 'Unknown Exercise';
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('• $exerciseName'), // now show name instead of ID
+                          Text('• $exerciseName'),
                           ...e.sets.asMap().entries.map((entry) {
                             final i = entry.key + 1;
                             final s = entry.value;
@@ -357,16 +411,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
     stopTimer();
     await _showRatingDialog();
 
-    // Detect personal records for each set (only if exercise has history)
     for (final exercise in exercises) {
       if (exercise.exercise == null) continue;
-      
-      // Check if this exercise has any previous history
+
       final previousProgress = await DatabaseHelper.instance
           .getExerciseProgress(exercise.exercise!.id);
       final hasHistory = previousProgress.isNotEmpty;
-      
-      // Only detect PR if exercise has previous history
+
       if (hasHistory) {
         for (final set in exercise.sets) {
           set.isPRWeight = await DatabaseHelper.instance
@@ -394,8 +445,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       )
           .toList(),
     );
-     
-    // PR tikrinimas
+
     final List<String> personalRecords = [];
     for (final exercise in exercises) {
       if (exercise.exercise == null) continue;
@@ -423,13 +473,34 @@ class _WorkoutPageState extends State<WorkoutPage> {
           personalRecords: personalRecords,
           onSave: () async {
             await DatabaseHelper.instance.saveWorkout(workout);
-            // Update PRs in database
+            double maxWeightLiftedToday = 0;
+            for (final ex in exercises) {
+              for (final s in ex.sets) {
+                if (s.weight > maxWeightLiftedToday) {
+                  maxWeightLiftedToday = s.weight;
+                }
+              }
+            }
             for (final exercise in exercises) {
               if (exercise.exercise == null) continue;
-              await DatabaseHelper.instance
-                  .updatePRsForWorkout(exercise.exercise!.id, workout.exercises
-                  .firstWhere((e) => e.exerciseRefId == exercise.exercise!.id)
-                  .sets);
+              await DatabaseHelper.instance.updatePRsForWorkout(
+                exercise.exercise!.id,
+                workout.exercises
+                    .firstWhere(
+                        (e) => e.exerciseRefId == exercise.exercise!.id)
+                    .sets,
+              );
+            }
+            if (context.mounted) {
+              final allWorkouts =
+              await DatabaseHelper.instance.getAllWorkouts();
+              final actualWorkoutCount = allWorkouts
+                  .where((w) => !w.name.startsWith('[ROUTINE]'))
+                  .length;
+              await AchievementService.checkWorkoutMilestones(
+                  context, actualWorkoutCount);
+              await AchievementService.checkWeightMilestones(
+                  context, maxWeightLiftedToday);
             }
             setState(() {
               workoutStarted = false;
@@ -449,8 +520,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
   @override
   void dispose() {
     timer?.cancel();
+    restTimer?.cancel();
     _commentController.dispose();
-    _workoutNameController.dispose(); // Dispose controller
+    _workoutNameController.dispose();
     super.dispose();
   }
 
@@ -481,141 +553,149 @@ class _WorkoutPageState extends State<WorkoutPage> {
       ),
       body: workoutStarted
           ? Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
+                TextField(
+                  controller: _workoutNameController,
+                  decoration:
+                  const InputDecoration(labelText: "Workout Name"),
+                  onChanged: (val) => workoutName = val,
+                ),
+                const SizedBox(height: 16),
+                if (!isRoutineMode)
+                  Text(
+                    formattedTime,
+                    style: const TextStyle(
+                        fontSize: 48, fontWeight: FontWeight.bold),
+                  ),
+                const SizedBox(height: 8),
+                if (!isRoutineMode)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      TextField(
-                        controller: _workoutNameController,
-                        decoration: const InputDecoration(labelText: "Workout Name"),
-                        onChanged: (val) => workoutName = val,
-                      ),
-                      const SizedBox(height: 16),
-                      if (!isRoutineMode)
-                        Text(
-                          formattedTime,
-                          style: const TextStyle(
-                              fontSize: 48, fontWeight: FontWeight.bold),
-                        ),
-                      const SizedBox(height: 8),
-                      if (!isRoutineMode)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                                onPressed: startTimer, child: const Text("Start")),
-                            const SizedBox(width: 16),
-                            ElevatedButton(
-                                onPressed: stopTimer, child: const Text("Stop")),
-                          ],
-                        ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: exercises.length,
-                          itemBuilder: (context, index) {
-                            return ExerciseCard(
-                              exercise: exercises[index],
-                              onChanged: (ex) =>
-                                  setState(() => exercises[index] = ex),
-                              onSetCompleted: startRestTimer,
-                            );
-                          },
-                        ),
-                      ),
                       ElevatedButton(
-                          onPressed: addExercise,
-                          child: const Text("Add Exercise")),
-                      const SizedBox(height: 8),
+                          onPressed: startTimer,
+                          child: const Text("Start")),
+                      const SizedBox(width: 16),
                       ElevatedButton(
-                        onPressed: saveWorkout,
-                        child: Text(isRoutineMode ? "Save Routine" : "Save Workout"),
+                          onPressed: stopTimer,
+                          child: const Text("Stop")),
+                    ],
+                  ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: exercises.length,
+                    itemBuilder: (context, index) {
+                      return ExerciseCard(
+                        exercise: exercises[index],
+                        onChanged: (ex) =>
+                            setState(() => exercises[index] = ex),
+                        onSetCompleted: startRestTimer,
+                      );
+                    },
+                  ),
+                ),
+                ElevatedButton(
+                    onPressed: addExercise,
+                    child: const Text("Add Exercise")),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: saveWorkout,
+                  child: Text(
+                      isRoutineMode ? "Save Routine" : "Save Workout"),
+                ),
+                if (currentRestSeconds > 0) const SizedBox(height: 80),
+              ],
+            ),
+          ),
+          if (currentRestSeconds > 0)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                color: Colors.blueAccent,
+                padding: const EdgeInsets.symmetric(
+                    vertical: 12, horizontal: 20),
+                child: SafeArea(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.timer, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Resting: ${currentRestSeconds}s",
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ),
-                      if (currentRestSeconds > 0) const SizedBox(height: 80),
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => setState(
+                                    () => currentRestSeconds += 30),
+                            child: const Text("+30s",
+                                style:
+                                TextStyle(color: Colors.white)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.skip_next,
+                                color: Colors.white),
+                            onPressed: () {
+                              restTimer?.cancel();
+                              setState(() => currentRestSeconds = 0);
+                            },
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-
-                if (currentRestSeconds > 0)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      color: Colors.blueAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                      child: SafeArea(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.timer, color: Colors.white),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "Resting: ${currentRestSeconds}s",
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                TextButton(
-                                  onPressed: () => setState(() => currentRestSeconds += 30),
-                                  child: const Text("+30s", style: TextStyle(color: Colors.white)),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.skip_next, color: Colors.white),
-                                  onPressed: () {
-                                    restTimer?.cancel();
-                                    setState(() => currentRestSeconds = 0);
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            )
-          : Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        workoutStarted = true;
-                        isRoutineMode = false;
-                      });
-                      startTimer();
-                    },
-                    child: const Text("New Workout"),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        workoutStarted = true;
-                        isRoutineMode = true;
-                      });
-                    },
-                    child: const Text("Create Routine"),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: showRoutinePicker,
-                    child: const Text("Start Routine"),
-                  ),
-                ],
               ),
             ),
+        ],
+      )
+          : Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  workoutStarted = true;
+                  isRoutineMode = false;
+                });
+                startTimer();
+              },
+              child: const Text("New Workout"),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  workoutStarted = true;
+                  isRoutineMode = true;
+                });
+              },
+              child: const Text("Create Routine"),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: showRoutinePicker,
+              child: const Text("Start Routine"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -703,10 +783,8 @@ class ExerciseCard extends StatefulWidget {
 }
 
 class _ExerciseCardState extends State<ExerciseCard> {
-
   @override
   void dispose() {
-    // išvalom controllerius kai widget sunaikinamas
     for (var s in widget.exercise.sets) {
       s.dispose();
     }
@@ -715,9 +793,7 @@ class _ExerciseCardState extends State<ExerciseCard> {
 
   void addSet() {
     setState(() {
-      widget.exercise.sets.add(
-        WorkoutSet(reps: 0, weight: 0),
-      );
+      widget.exercise.sets.add(WorkoutSet(reps: 0, weight: 0));
       widget.onChanged(widget.exercise);
       widget.onSetCompleted();
     });
@@ -736,15 +812,16 @@ class _ExerciseCardState extends State<ExerciseCard> {
     if (widget.exercise.exercise == null) return;
 
     final exerciseId = widget.exercise.exercise!.id;
-    
-    // Check if this exercise has any previous records
-    final previousProgress = await DatabaseHelper.instance.getExerciseProgress(exerciseId);
+
+    final previousProgress =
+    await DatabaseHelper.instance.getExerciseProgress(exerciseId);
     final hasHistory = previousProgress.isNotEmpty;
-    
-    // Only detect PR if exercise has previous history
+
     if (hasHistory) {
-      s.isPRWeight = await DatabaseHelper.instance.isWeightPR(exerciseId, s.weight);
-      s.isPRReps = await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
+      s.isPRWeight =
+      await DatabaseHelper.instance.isWeightPR(exerciseId, s.weight);
+      s.isPRReps =
+      await DatabaseHelper.instance.isRepsPR(exerciseId, s.reps);
     }
 
     setState(() {
@@ -765,180 +842,175 @@ class _ExerciseCardState extends State<ExerciseCard> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final units = UnitSystemScope.of(context);
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.exercise.exercise?.name ?? 'No exercise selected',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+Widget build(BuildContext context) {
+  final units = UnitSystemScope.of(context);
+  return Card(
+    margin: const EdgeInsets.symmetric(vertical: 8),
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.exercise.exercise?.name ?? 'No exercise selected',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                TextButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push<ExerciseInfo>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ExerciseBrowserPage(),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.push<ExerciseInfo>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ExerciseBrowserPage(),
+                    ),
+                  );
+                  if (result != null) {
+                    setState(() {
+                      widget.exercise.exercise = result;
+                      widget.onChanged(widget.exercise);
+                    });
+                  }
+                },
+                icon: const Icon(Icons.search),
+                label: const Text('Select Exercise'),
+              ),
+            ],
+          ),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.exercise.sets.length,
+            itemBuilder: (context, index) {
+              final s = widget.exercise.sets[index];
+              final typeColor = s.setType.color;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: typeColor, width: 4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8, top: 4),
+                        child: PopupMenuButton<SetType>(
+                          initialValue: s.setType,
+                          onSelected: (type) => _changeSetType(index, type),
+                          itemBuilder: (_) => SetType.values.map((t) => PopupMenuItem(
+                            value: t,
+                            child: Row(children: [
+                              Container(
+                                width: 12, height: 12,
+                                decoration: BoxDecoration(color: t.color, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(t.label),
+                            ]),
+                          )).toList(),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 10, height: 10,
+                                decoration: BoxDecoration(color: typeColor, shape: BoxShape.circle),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                s.setType.label,
+                                style: TextStyle(fontSize: 12, color: typeColor, fontWeight: FontWeight.w600),
+                              ),
+                              const Icon(Icons.arrow_drop_down, size: 16),
+                            ],
+                          ),
+                        ),
                       ),
-                    );
-
-                    if (result != null) {
-                      setState(() {
-                        widget.exercise.exercise = result;
-                        widget.onChanged(widget.exercise);
-                      });
-                    }
-                  },
-                  icon: const Icon(Icons.search),
-                  label: const Text('Select Exercise'),
-                ),
-              ],
-            ),
-
-            // SETAI
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: widget.exercise.sets.length,
-              itemBuilder: (context, index) {
-                final s = widget.exercise.sets[index];
-                final typeColor = s.setType.color;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border(left: BorderSide(color: typeColor, width: 4)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: s.isCompleted,
+                            onChanged: (_) => _checkSetForPR(index),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              controller: s.repsController,
+                              decoration: const InputDecoration(labelText: "Reps"),
+                              onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
+                              enabled: !s.isCompleted,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              controller: s.weightController,
+                              decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
+                              onChanged: (val) => s.weight = double.tryParse(val) ?? 0,
+                              enabled: !s.isCompleted,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => removeSet(index),
+                          ),
+                        ],
+                      ),
+                      if (s.isCompleted && (s.isPRWeight || s.isPRReps))
                         Padding(
-                          padding: const EdgeInsets.only(left: 8, top: 4),
-                          child: PopupMenuButton<SetType>(
-                            initialValue: s.setType,
-                            onSelected: (type) => _changeSetType(index, type),
-                            itemBuilder: (_) => SetType.values.map((t) => PopupMenuItem(
-                              value: t,
-                              child: Row(children: [
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Row(
+                            children: [
+                              if (s.isPRWeight)
                                 Container(
-                                  width: 12, height: 12,
-                                  decoration: BoxDecoration(color: t.color, shape: BoxShape.circle),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.star, size: 16, color: Colors.white),
+                                      SizedBox(width: 6),
+                                      Text('PR Weight!', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(width: 10),
-                                Text(t.label),
-                              ]),
-                            )).toList(),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
+                              const SizedBox(width: 12),
+                              if (s.isPRReps)
                                 Container(
-                                  width: 10, height: 10,
-                                  decoration: BoxDecoration(color: typeColor, shape: BoxShape.circle),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepOrange,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.trending_up, size: 16, color: Colors.white),
+                                      SizedBox(width: 6),
+                                      Text('PR Reps!', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  s.setType.label,
-                                  style: TextStyle(fontSize: 12, color: typeColor, fontWeight: FontWeight.w600),
-                                ),
-                                const Icon(Icons.arrow_drop_down, size: 16),
-                              ],
-                            ),
+                            ],
                           ),
                         ),
-                        Row(
-                          children: [
-                            Checkbox(
-                              value: s.isCompleted,
-                              onChanged: (_) => _checkSetForPR(index),
-                            ),
-                            Expanded(
-                              child: TextField(
-                                keyboardType: TextInputType.number,
-                                controller: s.repsController,
-                                decoration: const InputDecoration(labelText: "Reps"),
-                                onChanged: (val) => s.reps = int.tryParse(val) ?? 0,
-                                enabled: !s.isCompleted,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                keyboardType: TextInputType.number,
-                                controller: s.weightController,
-                                decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
-                                onChanged: (val) => s.weight = double.tryParse(val) ?? 0,
-                                enabled: !s.isCompleted,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => removeSet(index),
-                            ),
-                          ],
-                        ),
-                        if (s.isCompleted && (s.isPRWeight || s.isPRReps))
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Row(
-                              children: [
-                                if (s.isPRWeight)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: const Row(
-                                      children: [
-                                        Icon(Icons.star, size: 16, color: Colors.white),
-                                        SizedBox(width: 6),
-                                        Text('PR Weight!', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ),
-                                const SizedBox(width: 12),
-                                if (s.isPRReps)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.deepOrange,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: const Row(
-                                      children: [
-                                        Icon(Icons.trending_up, size: 16, color: Colors.white),
-                                        SizedBox(width: 6),
-                                        Text('PR Reps!', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 8),
-
-            TextButton(
-              onPressed: addSet,
-              child: const Text("Add Set"),
-            ),
-          ],
-        ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: addSet,
+            child: const Text("Add Set"),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

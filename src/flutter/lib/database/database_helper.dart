@@ -19,7 +19,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'workouts.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE workouts (
@@ -49,8 +49,6 @@ class DatabaseHelper {
             FOREIGN KEY (exercise_id) REFERENCES exercises(id)
           )
         ''');
-
-       
         await db.execute('''
           CREATE TABLE personal_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +56,15 @@ class DatabaseHelper {
             weight REAL,
             reps INTEGER,
             date TEXT
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE workout_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            planned_date TEXT NOT NULL,
+            routine_id INTEGER NOT NULL,
+            routine_name TEXT NOT NULL,
+            FOREIGN KEY (routine_id) REFERENCES workouts(id)
           )
         ''');
       },
@@ -71,8 +78,6 @@ class DatabaseHelper {
             'ALTER TABLE exercises ADD COLUMN exercise_ref_id TEXT',
           );
         }
-
-
         if (oldVersion < 4) {
           await db.execute('''
             CREATE TABLE personal_records (
@@ -84,11 +89,22 @@ class DatabaseHelper {
             )
           ''');
         }
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS workout_plans (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              planned_date TEXT NOT NULL,
+              routine_id INTEGER NOT NULL,
+              routine_name TEXT NOT NULL,
+              FOREIGN KEY (routine_id) REFERENCES workouts(id)
+            )
+          ''');
+        }
       },
     );
   }
 
-  // ================= NEW METHOD =================
+  // ================= EXERCISE INFO =================
   Future<ExerciseInfo?> getExerciseInfoById(String id) async {
     final db = await database;
     final rows = await db.query(
@@ -97,9 +113,7 @@ class DatabaseHelper {
       whereArgs: [id],
       limit: 1,
     );
-
     if (rows.isEmpty) return null;
-
     final row = rows.first;
     return ExerciseInfo(
       id: id,
@@ -114,7 +128,6 @@ class DatabaseHelper {
   // ================= SAVE WORKOUT =================
   Future<void> saveWorkout(WorkoutModel workout) async {
     final db = await database;
-
     await db.transaction((txn) async {
       final workoutId = await txn.insert('workouts', {
         'name': workout.name,
@@ -123,7 +136,6 @@ class DatabaseHelper {
         'rating': workout.rating,
         'comment': workout.comment,
       });
-
       for (final exercise in workout.exercises) {
         final exerciseInfo = getExerciseById(exercise.exerciseRefId);
         final exerciseId = await txn.insert('exercises', {
@@ -131,7 +143,6 @@ class DatabaseHelper {
           'exercise_ref_id': exercise.exerciseRefId,
           'name': exerciseInfo?.name,
         });
-
         for (final set in exercise.sets) {
           await txn.insert('sets', {
             'exercise_id': exerciseId,
@@ -143,89 +154,94 @@ class DatabaseHelper {
     });
   }
 
-  // ================= GET ALL WORKOUTS =================
+  // ================= GET ALL WORKOUTS (optimized) =================
   Future<List<WorkoutModel>> getAllWorkouts() async {
     final db = await database;
-    final workoutRows = await db.query('workouts', orderBy: 'date DESC');
-    final List<WorkoutModel> workouts = [];
 
-    for (final row in workoutRows) {
-      final workoutId = row['id'] as int;
+    // Single JOIN query instead of N+1 loop
+    final rows = await db.rawQuery('''
+      SELECT
+        w.id        AS w_id,
+        w.name      AS w_name,
+        w.duration  AS w_duration,
+        w.date      AS w_date,
+        w.rating    AS w_rating,
+        w.comment   AS w_comment,
+        e.id        AS e_id,
+        e.exercise_ref_id AS e_ref,
+        s.id        AS s_id,
+        s.reps      AS s_reps,
+        s.weight    AS s_weight
+      FROM workouts w
+      LEFT JOIN exercises e ON e.workout_id = w.id
+      LEFT JOIN sets s ON s.exercise_id = e.id
+      ORDER BY w.date DESC, w.id, e.id, s.id
+    ''');
 
-      final exerciseRows = await db.query(
-        'exercises',
-        where: 'workout_id = ?',
-        whereArgs: [workoutId],
-      );
+    // Build WorkoutModel map from flat rows
+    final Map<int, WorkoutModel> workoutMap = {};
+    final Map<int, ExerciseModel> exerciseMap = {};
 
-      final List<ExerciseModel> exercises = [];
+    for (final row in rows) {
+      final wId = row['w_id'] as int;
 
-      for (final exRow in exerciseRows) {
-        final exerciseId = exRow['id'] as int;
-
-        final setRows = await db.query(
-          'sets',
-          where: 'exercise_id = ?',
-          whereArgs: [exerciseId],
-        );
-
-        final sets = setRows
-            .map(
-              (s) => SetModel(
-            id: s['id'] as int?,
-            exerciseId: exerciseId,
-            reps: s['reps'] as int,
-            weight: (s['weight'] as num).toDouble(),
-          ),
-        )
-            .toList();
-
-        exercises.add(
-          ExerciseModel(
-            id: exerciseId,
-            workoutId: workoutId,
-            exerciseRefId:
-            (exRow['exercise_ref_id'] as String?) ?? '',
-            sets: sets,
-          ),
+      // Add workout if not seen yet
+      if (!workoutMap.containsKey(wId)) {
+        workoutMap[wId] = WorkoutModel(
+          id: wId,
+          name: row['w_name'] as String,
+          duration: row['w_duration'] as int,
+          date: DateTime.parse(row['w_date'] as String),
+          rating: row['w_rating'] as int? ?? 0,
+          comment: row['w_comment'] as String? ?? '',
+          exercises: [],
         );
       }
 
-      workouts.add(
-        WorkoutModel(
-          id: workoutId,
-          name: row['name'] as String,
-          duration: row['duration'] as int,
-          date: DateTime.parse(row['date'] as String),
-          rating: row['rating'] as int? ?? 0,
-          comment: row['comment'] as String? ?? '',
-          exercises: exercises,
-        ),
-      );
+      final eId = row['e_id'] as int?;
+      if (eId == null) continue; // workout with no exercises
+
+      // Add exercise if not seen yet
+      if (!exerciseMap.containsKey(eId)) {
+        final exercise = ExerciseModel(
+          id: eId,
+          workoutId: wId,
+          exerciseRefId: (row['e_ref'] as String?) ?? '',
+          sets: [],
+        );
+        exerciseMap[eId] = exercise;
+        workoutMap[wId]!.exercises.add(exercise);
+      }
+
+      final sId = row['s_id'] as int?;
+      if (sId == null) continue; // exercise with no sets
+
+      exerciseMap[eId]!.sets.add(SetModel(
+        id: sId,
+        exerciseId: eId,
+        reps: row['s_reps'] as int,
+        weight: (row['s_weight'] as num).toDouble(),
+      ));
     }
 
-    return workouts;
+    return workoutMap.values.toList();
   }
 
   // ================= PR METHODS =================
 
   Future<double> getMaxPRWeight(String exerciseRefId) async {
     final db = await database;
-
     final result = await db.rawQuery('''
       SELECT MAX(weight) as max_weight
       FROM personal_records
       WHERE exercise_ref_id = ?
     ''', [exerciseRefId]);
-
     if (result.isEmpty || result.first['max_weight'] == null) return 0;
-
     return (result.first['max_weight'] as num).toDouble();
   }
 
   Future<void> insertPR(String exerciseRefId, double weight, int reps) async {
     final db = await database;
-
     await db.insert('personal_records', {
       'exercise_ref_id': exerciseRefId,
       'weight': weight,
@@ -236,11 +252,7 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getAllPRs() async {
     final db = await database;
-
-    return await db.query(
-      'personal_records',
-      orderBy: 'date DESC',
-    );
+    return await db.query('personal_records', orderBy: 'date DESC');
   }
 
   // ================= HELPER METHODS =================
@@ -253,10 +265,10 @@ class DatabaseHelper {
     return rows.map((r) => r['exercise_ref_id'] as String).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getExerciseProgress(String exerciseRefId) async {
+  Future<List<Map<String, dynamic>>> getExerciseProgress(
+      String exerciseRefId) async {
     final db = await database;
-    return await db.rawQuery(
-      '''
+    return await db.rawQuery('''
       SELECT
         w.date,
         w.name AS workout_name,
@@ -269,9 +281,7 @@ class DatabaseHelper {
       WHERE e.exercise_ref_id = ?
       GROUP BY w.id
       ORDER BY w.date ASC
-      ''',
-      [exerciseRefId],
-    );
+    ''', [exerciseRefId]);
   }
 
   Future<double> getMaxWeightForExercise(String exerciseRefId) async {
@@ -308,12 +318,12 @@ class DatabaseHelper {
     return reps > maxReps;
   }
 
-  Future<void> updatePRsForWorkout(String exerciseRefId, List<SetModel> sets) async {
+  Future<void> updatePRsForWorkout(
+      String exerciseRefId, List<SetModel> sets) async {
     for (final set in sets) {
-      final isWeightPR = await this.isWeightPR(exerciseRefId, set.weight);
-      final isRepsPR = await this.isRepsPR(exerciseRefId, set.reps);
-      
-      if (isWeightPR || isRepsPR) {
+      final weightPR = await isWeightPR(exerciseRefId, set.weight);
+      final repsPR = await isRepsPR(exerciseRefId, set.reps);
+      if (weightPR || repsPR) {
         await insertPR(exerciseRefId, set.weight, set.reps);
       }
     }
@@ -321,12 +331,9 @@ class DatabaseHelper {
 
   Future<int> getWorkoutStreak() async {
     final db = await database;
-
     final result = await db.rawQuery('''
-    SELECT date FROM workouts
-    ORDER BY date DESC
-  ''');
-
+      SELECT date FROM workouts ORDER BY date DESC
+    ''');
     if (result.isEmpty) return 0;
 
     final dates = result.map((row) {
@@ -342,7 +349,6 @@ class DatabaseHelper {
 
     for (final date in dates) {
       final diff = currentDay.difference(date).inDays;
-
       if (diff == 0 || diff == 1) {
         streak++;
         currentDay = currentDay.subtract(const Duration(days: 1));
@@ -350,7 +356,49 @@ class DatabaseHelper {
         break;
       }
     }
-
     return streak;
+  }
+
+  // ================= WORKOUT PLANS =================
+
+  Future<void> savePlan({
+    required DateTime plannedDate,
+    required int routineId,
+    required String routineName,
+  }) async {
+    final db = await database;
+    await db.insert('workout_plans', {
+      'planned_date': DateTime(
+          plannedDate.year, plannedDate.month, plannedDate.day)
+          .toIso8601String(),
+      'routine_id': routineId,
+      'routine_name': routineName,
+    });
+  }
+
+  Future<Map<DateTime, Map<String, dynamic>>> getAllPlans() async {
+    final db = await database;
+    final rows =
+    await db.query('workout_plans', orderBy: 'planned_date ASC');
+    return {
+      for (final r in rows)
+        DateTime.parse(r['planned_date'] as String): r,
+    };
+  }
+
+  Future<void> deletePlan(int planId) async {
+    final db = await database;
+    await db.delete('workout_plans', where: 'id = ?', whereArgs: [planId]);
+  }
+
+  Future<void> deletePlanByDate(DateTime date) async {
+    final db = await database;
+    final normalised =
+    DateTime(date.year, date.month, date.day).toIso8601String();
+    await db.delete(
+      'workout_plans',
+      where: 'planned_date = ?',
+      whereArgs: [normalised],
+    );
   }
 }

@@ -64,7 +64,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
 
-          // 🔔 Notifications toggle
+          // Notifications toggle
           ListTile(
             leading: const Icon(Icons.notification_add),
             title: const Text('Enable notifications'),
@@ -93,7 +93,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
 
-          // 🧪 Notification Testing Section
+          //  Notification Testing Section
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(

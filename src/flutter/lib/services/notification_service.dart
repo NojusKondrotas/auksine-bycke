@@ -4,15 +4,17 @@ import 'package:timezone/data/latest.dart' as tz;
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
-      FlutterLocalNotificationsPlugin();
-  
+  FlutterLocalNotificationsPlugin();
+
   static Function(String?)? onNotificationTap;
 
   static Future<void> initialize() async {
     tz.initializeTimeZones();
 
+    tz.setLocalLocation(tz.getLocation('Europe/Vilnius'));
+
     const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -20,7 +22,7 @@ class NotificationService {
       requestSoundPermission: true,
       defaultPresentAlert: true,
       defaultPresentBadge: true,
-      defaultPresentSound: true, 
+      defaultPresentSound: true,
     );
 
     const settings = InitializationSettings(
@@ -30,27 +32,21 @@ class NotificationService {
 
     await _notifications.initialize(
       settings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        final payload = response.payload;
-        if (onNotificationTap != null) {
-          onNotificationTap!(payload);
-        }
-      },
     );
 
     await _notifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+        AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
 
     await _notifications
         .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
+        IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   static Future<void> scheduleDailyWorkout(String body) async {
@@ -75,7 +71,7 @@ class NotificationService {
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );
   }
@@ -109,22 +105,24 @@ class NotificationService {
   static Future<bool> checkPermissions() async {
     if (await _notifications
         .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
+        IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        ) ?? false) {
+      alert: true,
+      badge: true,
+      sound: true,
+    ) ??
+        false) {
       return true;
     }
-    
+
     if (await _notifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission() ?? false) {
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission() ??
+        false) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -155,8 +153,9 @@ class NotificationService {
   }
 
   static Future<void> testBackgroundNotification() async {
-    final scheduledTime = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 5));
-    
+    final scheduledTime =
+    tz.TZDateTime.now(tz.local).add(const Duration(seconds: 5));
+
     const notificationDetails = NotificationDetails(
       android: AndroidNotificationDetails(
         'test_channel',
@@ -181,7 +180,7 @@ class NotificationService {
       notificationDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
+      UILocalNotificationDateInterpretation.absoluteTime,
       payload: 'progress',
     );
   }
@@ -219,7 +218,7 @@ class NotificationService {
   static tz.TZDateTime _nextInstanceOfSixPM() {
     final now = tz.TZDateTime.now(tz.local);
     var scheduled =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, 18);
+    tz.TZDateTime(tz.local, now.year, now.month, now.day, 18);
 
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
@@ -227,4 +226,70 @@ class NotificationService {
 
     return scheduled;
   }
+
+  // ================= WORKOUT PLAN REMINDERS =================
+
+  /// Schedule a notification at 8:00 AM on [plannedDate].
+  static Future<void> scheduleWorkoutReminder({
+    required int id,
+    required String routineName,
+    required DateTime plannedDate,
+  }) async {
+
+    final now = tz.TZDateTime.now(tz.local);
+
+    final scheduledDate = tz.TZDateTime(
+      tz.local,
+      plannedDate.year,
+      plannedDate.month,
+      plannedDate.day,
+      8,
+      0,
+    );
+
+    print('NOW: $now');
+    print('SCHEDULED: $scheduledDate');
+    if (scheduledDate.isBefore(now)) {
+      print('SKIPPED: past date');
+      return;
+    }
+
+    await _notifications.zonedSchedule(
+      id,
+      '💪 Workout day!',
+      '$routineName is planned for today. Let\'s go!',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'workout_reminders',
+          'Workout Reminders',
+          channelDescription: 'Reminders for planned workouts',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          sound: 'default',
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+      UILocalNotificationDateInterpretation.absoluteTime,
+      payload: 'calendar',
+    );
+  }
+
+  /// Cancel a scheduled workout plan notification by [id].
+  static Future<void> cancelWorkoutReminder(int id) async {
+    await _notifications.cancel(id);
+  }
+
+  /// Generate a stable notification ID from a date (max 100000).
+  static int idFromDate(DateTime date) =>
+      int.parse(
+        '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}',
+      ) %
+          100000;
 }
