@@ -8,6 +8,7 @@ import 'package:auksine_bycke/utils/exercise_info.dart';
 import 'package:auksine_bycke/workouts/workout_models.dart';
 import 'package:auksine_bycke/database/achievement_db.dart';
 import 'package:auksine_bycke/pages/workout_page.dart';
+import 'package:auksine_bycke/pages/workout_detail_page.dart';
 
 
 class ProgressPage extends StatefulWidget {
@@ -309,36 +310,6 @@ class _ProgressPageState extends State<ProgressPage>
                   style: theme.textTheme.bodySmall,
                 ),
                 children: [
-                  if (w.comment.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.dividerColor.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Feedback:",
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.secondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '"${w.comment}"',
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ...w.exercises.map(
                     (exercise) => Padding(
                       padding: const EdgeInsets.symmetric(
@@ -375,22 +346,39 @@ class _ProgressPageState extends State<ProgressPage>
                   ),
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.repeat),
-                        label: const Text('Repeat Workout'),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => WorkoutPage(
-                                templateWorkout: w,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.repeat),
+                            label: const Text('Repeat'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      WorkoutPage(templateWorkout: w),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.info_outline),
+                            label: const Text('Details'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => WorkoutDetailPage(workout: w),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

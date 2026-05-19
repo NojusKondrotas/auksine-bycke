@@ -46,7 +46,7 @@ const List<ExerciseInfo> predefinedExercises = [
   ),
   ExerciseInfo(
     id: '3tAXPQ6',
-    name: 'Dumbbell over bench revers wrist curl',
+    name: 'Dumbbell over bench reverse wrist curl',
     muscles: ['forearms', 'biceps', 'brachialis'],
     bodyParts: ['lower arms'],
     instructions: [
