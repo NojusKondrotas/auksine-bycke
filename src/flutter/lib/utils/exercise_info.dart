@@ -12,6 +12,6 @@ class ExerciseInfo {
     required this.muscles,
     required this.bodyParts,
     required this.instructions,
-    required this.mediaPaths,
+    this.mediaPaths = const [],
   });
 }
