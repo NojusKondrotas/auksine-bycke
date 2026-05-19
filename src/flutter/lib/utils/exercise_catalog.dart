@@ -90,6 +90,18 @@ const List<ExerciseInfo> predefinedExercises = [
     ],
     mediaPaths: ['assets/exercises/720x720/3XFdb1Z.gif'],
   ),
+   ExerciseInfo(
+    id: 'bench_press',
+    name: 'Bench Press',
+    muscles: ['pectorals', 'triceps', 'shoulders'],
+    bodyParts: ['chest'],
+    instructions: [
+      'Lie on the bench.',
+      'Lower the bar to your chest.',
+      'Press upward.',
+    ],
+    mediaPaths: ['assets/exercises/bench_press.gif'],
+  ),
 ];
 
 ExerciseInfo? getExerciseById(String id) {

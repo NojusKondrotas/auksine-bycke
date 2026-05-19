@@ -4,7 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ExportService {
-  static Future<void> exportWorkouts() async {
+  static Future<String> exportWorkouts() async {
     final workouts = await DatabaseHelper.instance.getAllWorkouts();
 
     final buffer = StringBuffer();
@@ -29,21 +29,31 @@ class ExportService {
       }
     }
 
-    final directory = Directory('/storage/emulated/0/Download');
+    final dir = Directory('/storage/emulated/0/Download');
 
-    final file = File('${directory.path}/workout_export.csv');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
 
-    await file.writeAsString(buffer.toString());
+    final file = File('${dir.path}/workout_export.csv');
 
+    await file.writeAsString(
+      buffer.toString(),
+      flush: true,
+    );
+
+    // optional: still allow share
     await Share.shareXFiles(
       [XFile(file.path)],
-      text: 'Workout history export',
+      text: 'Workout export CSV',
     );
+
+    return file.path;
   }
 
   static String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}-'
+    return '${date.year}-'
         '${date.month.toString().padLeft(2, '0')}-'
-        '${date.year}';
+        '${date.day.toString().padLeft(2, '0')}';
   }
 }
