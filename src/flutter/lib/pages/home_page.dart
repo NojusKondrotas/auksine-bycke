@@ -138,6 +138,7 @@ class HomeContentPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const StreakWidget(),
+
             // ---------------- TODAY WORKOUT ----------------
             SizedBox(
               width: 500,
@@ -145,20 +146,17 @@ class HomeContentPage extends StatelessWidget {
                 elevation: 4,
                 child: Stack(
                   children: [
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: IconButton(
-                        iconSize: 20,
-                        onPressed: () {},
-                        icon: const Icon(Icons.open_in_full),
-                      ),
-                    ),
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Workout(
                         name: "Today's Workout",
-                        exercises: todaysExercises,
+                        exerciseIds: const [
+                          'bench_press',
+                          'lateral_raise',
+                          'pull_up',
+                          'squat',
+                          'plank',
+                        ],
                         tags: [
                           FatLossTag(),
                           FullBodyTag(),
@@ -179,30 +177,13 @@ class HomeContentPage extends StatelessWidget {
                 elevation: 4,
                 child: Stack(
                   children: [
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: IconButton(
-                        iconSize: 20,
-                        onPressed: () {},
-                        icon: const Icon(Icons.open_in_full),
-                      ),
-                    ),
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Workout(
                         name: "Tomorrow's Workout",
-                        exercises: [
-                          ExerciseData(
-                            exercise: predefinedExercises[5],
-                            sets: 4,
-                            reps: 10,
-                          ),
-                          ExerciseData(
-                            exercise: predefinedExercises[3],
-                            sets: 4,
-                            reps: 10,
-                          ),
+                        exerciseIds: const [
+                          'dumbbell_fly',   // predefinedExercises[5]
+                          'push_up',        // predefinedExercises[3]
                         ],
                         tags: [EnduranceTag(), UpperBodyTag(), StrengthTag()],
                       ),
@@ -219,35 +200,14 @@ class HomeContentPage extends StatelessWidget {
                 elevation: 4,
                 child: Stack(
                   children: [
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: IconButton(
-                        iconSize: 20,
-                        onPressed: () {},
-                        icon: const Icon(Icons.open_in_full),
-                      ),
-                    ),
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Workout(
                         name: "Marta's Workout",
-                        exercises: [
-                          ExerciseData(
-                            exercise: predefinedExercises[2],
-                            sets: 4,
-                            reps: 12,
-                          ),
-                          ExerciseData(
-                            exercise: predefinedExercises[3],
-                            sets: 3,
-                            reps: 20,
-                          ),
-                          ExerciseData(
-                            exercise: predefinedExercises[0],
-                            sets: 4,
-                            reps: 10,
-                          ),
+                        exerciseIds: const [
+                          'decline_bench_press', // predefinedExercises[2]
+                          'push_up',             // predefinedExercises[3]
+                          'bench_press',         // predefinedExercises[0]
                         ],
                         tags: [UpperBodyTag(), StrengthTag(), LowerBodyTag()],
                       ),
