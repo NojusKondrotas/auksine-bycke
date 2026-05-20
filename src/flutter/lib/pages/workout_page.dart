@@ -841,6 +841,120 @@ class _ExerciseCardState extends State<ExerciseCard> {
     });
   }
 
+  List<double> _calculatePlates({
+    required double targetWeight,
+    required double barWeight,
+    required List<double> availablePlates,
+  }) {
+    double remainingWeight = targetWeight - barWeight;
+
+    if (remainingWeight <= 0) return [];
+
+    remainingWeight /= 2;
+
+    List<double> platesPerSide = [];
+
+    for (final plate in availablePlates) {
+      while (remainingWeight >= plate - 0.001) {
+        platesPerSide.add(plate);
+        remainingWeight -= plate;
+      }
+    }
+
+    return platesPerSide;
+  }
+
+  void _showPlateCalculator(double targetWeight, bool isMetric) {
+    final TextEditingController barController = TextEditingController(
+      text: isMetric ? '20' : '45',
+    );
+
+    final List<double> availablePlates = isMetric
+        ? [25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 1.25]
+        : [55.0, 45.0, 35.0, 25.0, 10.0, 5.0, 2.5];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        List<double> result = [];
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            void calculate() {
+              final barWeight =
+                  double.tryParse(barController.text) ?? 0;
+
+              result = _calculatePlates(
+                targetWeight: targetWeight,
+                barWeight: barWeight,
+                availablePlates: availablePlates,
+              );
+
+              setDialogState(() {});
+            }
+
+            return AlertDialog(
+              title: const Text('Plate Calculator'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Target Weight: ${targetWeight.toStringAsFixed(1)} ${isMetric ? 'kg' : 'lbs'}',
+                  ),
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: barController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText:
+                      'Bar Weight (${isMetric ? 'kg' : 'lbs'})',
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  ElevatedButton(
+                    onPressed: calculate,
+                    child: const Text('Calculate'),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  if (result.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Load each side with:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: result.map((plate) {
+                            return Chip(
+                              label: Text(
+                                '$plate ${isMetric ? 'kg' : 'lbs'}',
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
 Widget build(BuildContext context) {
   final units = UnitSystemScope.of(context);
@@ -944,12 +1058,32 @@ Widget build(BuildContext context) {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: TextField(
-                              keyboardType: TextInputType.number,
-                              controller: s.weightController,
-                              decoration: InputDecoration(labelText: "Weight ${units.weightLabel()}"),
-                              onChanged: (val) => s.weight = double.tryParse(val) ?? 0,
-                              enabled: !s.isCompleted,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    keyboardType: TextInputType.number,
+                                    controller: s.weightController,
+                                    decoration: InputDecoration(
+                                      labelText: "Weight ${units.weightLabel()}",
+                                    ),
+                                    onChanged: (val) =>
+                                    s.weight = double.tryParse(val) ?? 0,
+                                    enabled: !s.isCompleted,
+                                  ),
+                                ),
+
+                                IconButton(
+                                  icon: const Icon(Icons.calculate),
+                                  tooltip: 'Plate Calculator',
+                                  onPressed: () {
+                                    _showPlateCalculator(
+                                      s.weight,
+                                      units.isMetric,
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                           IconButton(
