@@ -118,7 +118,7 @@ class WorkoutSummaryPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               ...personalRecords.map((pr) => Card(
-                color: Colors.amber.shade50,
+                color: Colors.orange.shade600,
                 child: ListTile(
                   leading: const Icon(Icons.star, color: Colors.amber),
                   title: Text(pr),
