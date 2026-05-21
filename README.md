@@ -2,7 +2,7 @@
 
 **A Flutter mobile app — built for the road, written in Dart.**
 
-*"Auksinė bičkė"* — sleek, fast, and cross-platform.
+*"Auksinė byckė"* — sleek, fast, and cross-platform.
 
 ---
 
